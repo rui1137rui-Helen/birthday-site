@@ -13,10 +13,35 @@
       display: flex;
       justify-content: center;
       align-items: center;
+      overflow-x: hidden;
+      transition: background 1s ease;
+    }
+
+    /* ========== 全局背景渐变 ========== */
+    body.bg-login {
       background: linear-gradient(135deg, #f093fb 0%, #f5576c 50%, #ffd452 100%);
       background-size: 400% 400%;
       animation: gradientShift 8s ease infinite;
-      overflow-x: hidden;
+    }
+    body.bg-romantic {
+      background: linear-gradient(135deg, #fbc2eb 0%, #fda085 30%, #f6d365 60%, #fbc2eb 100%);
+      background-size: 300% 300%;
+      animation: gradientShift 6s ease infinite;
+    }
+    body.bg-love {
+      background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+      background-size: 300% 300%;
+      animation: gradientShift 6s ease infinite;
+    }
+    body.bg-congrats {
+      background: linear-gradient(135deg, #a8edea 0%, #fed6e3 40%, #d4fc79 100%);
+      background-size: 300% 300%;
+      animation: gradientShift 6s ease infinite;
+    }
+    body.bg-birthday {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 50%, #ffd452 100%);
+      background-size: 400% 400%;
+      animation: gradientShift 8s ease infinite;
     }
 
     @keyframes gradientShift {
@@ -33,8 +58,18 @@
       justify-content: center;
       align-items: center;
       flex-direction: column;
+      position: relative;
     }
     .page.active { display: flex; }
+
+    /* ========== 全局画布（爱心、树等） ========== */
+    #decoration-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
 
     /* ========== 登录卡片 ========== */
     .login-card {
@@ -47,11 +82,18 @@
       box-shadow: 0 20px 60px rgba(0,0,0,0.15);
       text-align: center;
       animation: fadeInUp 0.6s ease;
+      position: relative;
+      z-index: 2;
     }
 
     @keyframes fadeInUp {
       from { opacity: 0; transform: translateY(30px); }
       to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
 
     .login-card h1 {
@@ -115,7 +157,6 @@
       transform: translateY(-2px);
       box-shadow: 0 8px 25px rgba(245,87,108,0.4);
     }
-
     .login-btn:active { transform: translateY(0); }
 
     .error-msg {
@@ -125,6 +166,203 @@
       display: none;
     }
     .error-msg.show { display: block; }
+
+    /* ========== 计时器 + 问答页面 ========== */
+    .counter-content {
+      text-align: center;
+      position: relative;
+      z-index: 2;
+      animation: fadeInUp 0.8s ease;
+      padding: 20px;
+    }
+
+    .counter-content .time-label {
+      font-size: 1rem;
+      color: rgba(255,255,255,0.9);
+      margin-bottom: 6px;
+      letter-spacing: 2px;
+    }
+
+    .counter-stats {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 10px;
+    }
+
+    .counter-stat {
+      background: rgba(255,255,255,0.2);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 16px 20px;
+      min-width: 90px;
+      border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    .counter-stat .number {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: #fff;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.15);
+      line-height: 1.1;
+    }
+
+    .counter-stat .unit {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.8);
+      margin-top: 4px;
+    }
+
+    /* 问答卡片 */
+    .quiz-card {
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(20px);
+      border-radius: 20px;
+      padding: 36px 30px;
+      max-width: 500px;
+      width: 90%;
+      margin: 20px auto 0;
+      box-shadow: 0 15px 50px rgba(0,0,0,0.12);
+      animation: fadeInUp 0.6s ease 0.3s both;
+      position: relative;
+      z-index: 2;
+    }
+
+    .quiz-card h2 {
+      color: #e8456b;
+      font-size: 1.4rem;
+      margin-bottom: 24px;
+    }
+
+    .quiz-option {
+      display: block;
+      width: 100%;
+      padding: 14px 20px;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #fff5f7, #fff);
+      border: 2px solid #ffe0e6;
+      border-radius: 14px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-align: left;
+      color: #555;
+      position: relative;
+    }
+
+    .quiz-option:hover {
+      border-color: #f5576c;
+      background: #fff0f3;
+      transform: translateX(4px);
+      box-shadow: 0 4px 15px rgba(245,87,108,0.15);
+    }
+
+    .quiz-option .option-label {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      line-height: 28px;
+      background: linear-gradient(135deg, #f093fb, #f5576c);
+      color: #fff;
+      border-radius: 50%;
+      text-align: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+      margin-right: 10px;
+    }
+
+    /* ========== 结果页面 A / B ========== */
+    .result-content {
+      text-align: center;
+      position: relative;
+      z-index: 2;
+      animation: fadeInUp 0.6s ease;
+    }
+
+    .result-content h1 {
+      font-size: clamp(2rem, 7vw, 3.5rem);
+      color: #fff;
+      text-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      margin-bottom: 12px;
+    }
+
+    .result-content .result-subtitle {
+      color: rgba(255,255,255,0.85);
+      font-size: 1rem;
+      margin-bottom: 30px;
+    }
+
+    .heart-btn, .back-quiz-btn {
+      padding: 14px 36px;
+      border-radius: 50px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s;
+      letter-spacing: 1px;
+      border: 2px solid rgba(255,255,255,0.5);
+      color: #fff;
+      background: rgba(255,255,255,0.2);
+      backdrop-filter: blur(10px);
+    }
+
+    .heart-btn:hover, .back-quiz-btn:hover {
+      background: rgba(255,255,255,0.4);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+
+    /* ========== 结果页面 C ========== */
+    .congrats-content {
+      text-align: center;
+      position: relative;
+      z-index: 2;
+      animation: bounceIn 1s ease;
+    }
+
+    @keyframes bounceIn {
+      0% { opacity: 0; transform: scale(0.3); }
+      50% { transform: scale(1.08); }
+      70% { transform: scale(0.95); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    .congrats-content h1 {
+      font-size: clamp(2.5rem, 10vw, 5rem);
+      color: #fff;
+      text-shadow: 0 4px 30px rgba(0,0,0,0.2);
+      margin-bottom: 8px;
+    }
+
+    .congrats-content .sparkles {
+      font-size: 2.5rem;
+      margin-bottom: 16px;
+    }
+
+    .continue-btn {
+      margin-top: 30px;
+      padding: 16px 50px;
+      background: linear-gradient(135deg, #ff9a9e, #fecfef);
+      color: #fff;
+      border: none;
+      border-radius: 50px;
+      font-size: 1.2rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      letter-spacing: 2px;
+      box-shadow: 0 6px 25px rgba(255,154,158,0.4);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 6px 25px rgba(255,154,158,0.4); }
+      50% { box-shadow: 0 6px 40px rgba(255,154,158,0.7), 0 0 60px rgba(254,207,239,0.4); }
+    }
+
+    .continue-btn:hover {
+      transform: translateY(-3px) scale(1.03);
+    }
 
     /* ========== 生日页面 ========== */
     .birthday-content {
@@ -140,13 +378,6 @@
       text-shadow: 0 4px 20px rgba(0,0,0,0.2);
       animation: bounceIn 1s ease;
       margin-bottom: 10px;
-    }
-
-    @keyframes bounceIn {
-      0% { opacity: 0; transform: scale(0.3); }
-      50% { transform: scale(1.08); }
-      70% { transform: scale(0.95); }
-      100% { opacity: 1; transform: scale(1); }
     }
 
     .birthday-content .age {
@@ -253,16 +484,25 @@
 
     /* ========== 响应式 ========== */
     @media (max-width: 480px) {
-      .login-card, .letter-card {
-        padding: 30px 24px;
+      .login-card, .letter-card, .quiz-card {
+        padding: 30px 20px;
       }
       .birthday-content .age { font-size: 4rem; }
+      .counter-stat {
+        min-width: 65px;
+        padding: 12px 14px;
+      }
+      .counter-stat .number { font-size: 1.6rem; }
+      .quiz-option { font-size: 0.9rem; padding: 12px 14px; }
     }
   </style>
 </head>
-<body>
+<body class="bg-login">
 
-  <!-- ==================== 第一页：登录 ==================== -->
+  <!-- ==================== 装饰画布（爱心树、飘浮爱心） ==================== -->
+  <canvas id="decoration-canvas"></canvas>
+
+  <!-- ==================== 第0页：登录 ==================== -->
   <div class="page active" id="login-page">
     <div class="login-card">
       <h1>🎂</h1>
@@ -280,18 +520,88 @@
     </div>
   </div>
 
-  <!-- ==================== 第二页：生日快乐 ==================== -->
+  <!-- ==================== 第1页：计时器 + 问答 ==================== -->
+  <div class="page" id="quiz-page">
+    <div class="counter-content">
+      <p class="time-label">💕 从2025年12月20日走到现在</p>
+      <div class="counter-stats">
+        <div class="counter-stat">
+          <div class="number" id="counter-days">0</div>
+          <div class="unit">天</div>
+        </div>
+        <div class="counter-stat">
+          <div class="number" id="counter-hours">0</div>
+          <div class="unit">时</div>
+        </div>
+        <div class="counter-stat">
+          <div class="number" id="counter-minutes">0</div>
+          <div class="unit">分</div>
+        </div>
+        <div class="counter-stat">
+          <div class="number" id="counter-seconds">0</div>
+          <div class="unit">秒</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="quiz-card">
+      <h2>🌸 今天是什么日子呀？</h2>
+      <button class="quiz-option" onclick="chooseOption('A')">
+        <span class="option-label">A</span> 是朵朵的亲亲宝贝小葛昕的生日呀～
+      </button>
+      <button class="quiz-option" onclick="chooseOption('B')">
+        <span class="option-label">B</span> 徐葛昕
+      </button>
+      <button class="quiz-option" onclick="chooseOption('C')">
+        <span class="option-label">C</span> 实力超强长得超萌非常厉害的会越来越好越来越强越来越棒的大女人徐葛昕
+      </button>
+    </div>
+  </div>
+
+  <!-- ==================== 第2页：结果 A ==================== -->
+  <div class="page" id="result-a-page">
+    <div class="result-content">
+      <h1>💖 我爱你 💖</h1>
+      <p class="result-subtitle">朵朵的亲亲宝贝，生日快乐～</p>
+      <button class="back-quiz-btn" onclick="showPage('quiz-page')">← 返回上一页</button>
+    </div>
+  </div>
+
+  <!-- ==================== 第3页：结果 B ==================== -->
+  <div class="page" id="result-b-page">
+    <div class="result-content">
+      <h1>🎀 恭喜你进入20岁呀！</h1>
+      <p class="result-subtitle">但是还有隐藏界面在别的选项哦～</p>
+      <button class="back-quiz-btn" onclick="showPage('quiz-page')">← 返回上一页</button>
+    </div>
+  </div>
+
+  <!-- ==================== 第4页：结果 C（跳板页） ==================== -->
+  <div class="page" id="result-c-page">
+    <div class="congrats-content">
+      <div class="sparkles">✨🎉✨</div>
+      <h1>恭喜！！！</h1>
+      <p style="color:rgba(255,255,255,0.85); font-size:1.1rem; margin-top:8px;">
+        你找到了正确的入口～
+      </p>
+      <button class="continue-btn" onclick="showPage('birthday-page')">继 续 →</button>
+    </div>
+  </div>
+
+  <!-- ==================== 第5页：生日快乐 + 彩带 ==================== -->
   <div class="page" id="birthday-page">
     <canvas id="confetti-canvas"></canvas>
     <div class="birthday-content">
       <div class="age">20</div>
       <h1>二十岁生日快乐！</h1>
-      <p style="color:rgba(255,255,255,0.8); margin-top:8px; font-size:1.1rem;">🎉 希望我们可以一起走向更好的未来呀！ 🎉</p>
+      <p style="color:rgba(255,255,255,0.8); margin-top:8px; font-size:1.1rem;">
+        🎉 希望我们可以一起走向更好的未来呀！ 🎉
+      </p>
       <button class="next-btn" onclick="showPage('letter-page')">💌 打开信件</button>
     </div>
   </div>
 
-  <!-- ==================== 第三页：信件 ==================== -->
+  <!-- ==================== 第6页：信件 ==================== -->
   <div class="page" id="letter-page">
     <div class="letter-card">
       <div class="letter-icon">💌</div>
@@ -304,12 +614,48 @@
   </div>
 
   <script>
+    // ========== 全局状态 ==========
+    let currentPage = 'login-page';
+    let quizAnswered = false;
+
+    // ========== 背景颜色映射 ==========
+    const pageBackgrounds = {
+      'login-page': 'bg-login',
+      'quiz-page': 'bg-romantic',
+      'result-a-page': 'bg-love',
+      'result-b-page': 'bg-love',
+      'result-c-page': 'bg-congrats',
+      'birthday-page': 'bg-birthday',
+      'letter-page': 'bg-romantic',
+    };
+
     // ========== 页面切换 ==========
     function showPage(pageId) {
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
       document.getElementById(pageId).classList.add('active');
+      currentPage = pageId;
+
+      // 切换背景
+      document.body.className = '';
+      if (pageBackgrounds[pageId]) {
+        document.body.classList.add(pageBackgrounds[pageId]);
+      }
+
+      // 特殊页面逻辑
       if (pageId === 'birthday-page') startConfetti();
-      if (pageId !== 'birthday-page') stopConfetti();
+      else stopConfetti();
+
+      if (pageId === 'quiz-page') {
+        startHeartTrees();
+        updateCounter();
+      } else {
+        stopHeartTrees();
+      }
+
+      if (pageId === 'result-a-page') startFloatingHearts('A');
+      else if (pageId === 'result-b-page') startFloatingHearts('B');
+      else if (pageId === 'result-c-page') startSparkleHearts();
+      else stopFloatingHearts();
     }
 
     // ========== 登录逻辑 ==========
@@ -320,13 +666,12 @@
 
       if (username === 'xgx' && password === '251220') {
         errorMsg.classList.remove('show');
-        showPage('birthday-page');
+        showPage('quiz-page');
       } else {
         errorMsg.classList.add('show');
-        // 抖动效果
         const card = document.querySelector('.login-card');
         card.style.animation = 'none';
-        card.offsetHeight; // reflow
+        card.offsetHeight;
         card.style.animation = 'shake 0.5s ease';
       }
     }
@@ -352,18 +697,261 @@
     `;
     document.head.appendChild(shakeStyle);
 
-    // ========== 彩带效果 ==========
-    const canvas = document.getElementById('confetti-canvas');
-    const ctx = canvas.getContext('2d');
-    let confettiPieces = [];
-    let animationId = null;
-
-    function resizeCanvas() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+    // ========== 选择题逻辑 ==========
+    function chooseOption(option) {
+      if (option === 'A') showPage('result-a-page');
+      else if (option === 'B') showPage('result-b-page');
+      else if (option === 'C') showPage('result-c-page');
     }
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
+
+    // ========== 计时器（北京时间 UTC+8，从 2025-12-20 00:00:00 开始） ==========
+    function updateCounter() {
+      const startDate = new Date('2025-12-20T00:00:00+08:00');
+
+      function tick() {
+        if (currentPage !== 'quiz-page') return;
+        const now = new Date();
+        const diff = now - startDate; // 毫秒差
+
+        const totalSeconds = Math.floor(diff / 1000);
+        const days = Math.floor(totalSeconds / 86400);
+        const hours = Math.floor((totalSeconds % 86400) / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+
+        document.getElementById('counter-days').textContent = days;
+        document.getElementById('counter-hours').textContent = hours;
+        document.getElementById('counter-minutes').textContent = minutes;
+        document.getElementById('counter-seconds').textContent = seconds;
+
+        requestAnimationFrame(() => {
+          if (currentPage === 'quiz-page') setTimeout(tick, 1000);
+        });
+      }
+
+      tick();
+    }
+
+    // ========== 爱心树画布 ==========
+    const decoCanvas = document.getElementById('decoration-canvas');
+    const decoCtx = decoCanvas.getContext('2d');
+    let heartTreeAnimId = null;
+    let floatingHeartsAnimId = null;
+    let heartTrees = [];
+    let floatingHearts = [];
+    let sparkleParticles = [];
+
+    function resizeDecoCanvas() {
+      decoCanvas.width = window.innerWidth;
+      decoCanvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeDecoCanvas);
+    resizeDecoCanvas();
+
+    // 画爱心路径
+    function drawHeart(ctx, x, y, size, rotation) {
+      ctx.save();
+      ctx.translate(x, y);
+      if (rotation) ctx.rotate(rotation);
+      const s = size / 30;
+      ctx.beginPath();
+      ctx.moveTo(0, -5 * s);
+      for (let t = 0; t <= Math.PI * 2; t += 0.02) {
+        const hx = 15 * s * Math.pow(Math.sin(t), 3);
+        const hy = -(13 * s * Math.cos(t) - 5 * s * Math.cos(2 * t) - 2 * s * Math.cos(3 * t) - Math.cos(4 * t));
+        ctx.lineTo(hx, hy);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // 生成爱心树数据
+    function createHeartTrees() {
+      heartTrees = [];
+      const colors = ['#ff6b6b', '#ff8e8e', '#ffb3b3', '#f06292', '#ff80ab',
+                      '#ff9a9e', '#f48fb1', '#ff5252', '#ff4081', '#e91e63'];
+      for (let i = 0; i < 12; i++) {
+        heartTrees.push({
+          x: Math.random() * decoCanvas.width,
+          y: decoCanvas.height - Math.random() * 60 - 10,
+          trunkHeight: 40 + Math.random() * 80,
+          trunkWidth: 3 + Math.random() * 5,
+          crownSize: 20 + Math.random() * 30,
+          hearts: Array.from({ length: 6 + Math.floor(Math.random() * 6) }, () => ({
+            offsetX: (Math.random() - 0.5) * 50,
+            offsetY: -(Math.random() * 50 + 20),
+            size: 5 + Math.random() * 10,
+            sway: Math.random() * Math.PI * 2,
+            color: colors[Math.floor(Math.random() * colors.length)],
+          })),
+          swayPhase: Math.random() * Math.PI * 2,
+          swaySpeed: 0.01 + Math.random() * 0.02,
+        });
+      }
+    }
+
+    function drawHeartTrees(time) {
+      decoCtx.clearRect(0, 0, decoCanvas.width, decoCanvas.height);
+
+      heartTrees.forEach(tree => {
+        const sway = Math.sin(time * tree.swaySpeed + tree.swayPhase) * 4;
+
+        // 树干
+        decoCtx.strokeStyle = '#8B5E3C';
+        decoCtx.lineWidth = tree.trunkWidth;
+        decoCtx.lineCap = 'round';
+        decoCtx.beginPath();
+        decoCtx.moveTo(tree.x, tree.y);
+        decoCtx.lineTo(tree.x + sway * 0.3, tree.y - tree.trunkHeight);
+        decoCtx.stroke();
+
+        // 树冠上的爱心
+        const crownX = tree.x + sway * 0.3;
+        const crownY = tree.y - tree.trunkHeight;
+        tree.hearts.forEach(h => {
+          const hx = crownX + h.offsetX + Math.sin(time * 0.03 + h.sway) * 3;
+          const hy = crownY + h.offsetY + Math.cos(time * 0.025 + h.sway) * 3;
+          decoCtx.fillStyle = h.color;
+          decoCtx.globalAlpha = 0.85;
+          drawHeart(decoCtx, hx, hy, h.size, Math.sin(time * 0.02 + h.sway) * 0.3);
+        });
+
+        // 树冠底色圆
+        decoCtx.globalAlpha = 0.3;
+        decoCtx.fillStyle = '#ffb3b3';
+        decoCtx.beginPath();
+        decoCtx.arc(crownX, crownY - 10, tree.crownSize, 0, Math.PI * 2);
+        decoCtx.fill();
+        decoCtx.globalAlpha = 1;
+      });
+    }
+
+    function heartTreeLoop(time) {
+      drawHeartTrees(time);
+      heartTreeAnimId = requestAnimationFrame(heartTreeLoop);
+    }
+
+    function startHeartTrees() {
+      resizeDecoCanvas();
+      createHeartTrees();
+      if (!heartTreeAnimId) heartTreeAnimId = requestAnimationFrame(heartTreeLoop);
+    }
+
+    function stopHeartTrees() {
+      if (heartTreeAnimId) {
+        cancelAnimationFrame(heartTreeAnimId);
+        heartTreeAnimId = null;
+      }
+      decoCtx.clearRect(0, 0, decoCanvas.width, decoCanvas.height);
+    }
+
+    // ========== 飘浮爱心（结果 A/B 页面） ==========
+    function createFloatingHearts() {
+      floatingHearts = [];
+      const colors = ['#ff6b6b', '#ff8e8e', '#ffb3b3', '#f06292', '#ff80ab',
+                      '#ff9a9e', '#f48fb1', '#ff5252', '#ff4081'];
+      for (let i = 0; i < 40; i++) {
+        floatingHearts.push({
+          x: Math.random() * decoCanvas.width,
+          y: decoCanvas.height + Math.random() * 200,
+          size: 8 + Math.random() * 16,
+          speedY: -(0.5 + Math.random() * 1.8),
+          speedX: (Math.random() - 0.5) * 0.8,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          sway: Math.random() * Math.PI * 2,
+          swaySpeed: 0.01 + Math.random() * 0.03,
+        });
+      }
+    }
+
+    function drawAndUpdateFloatingHearts(time) {
+      decoCtx.clearRect(0, 0, decoCanvas.width, decoCanvas.height);
+      floatingHearts.forEach(h => {
+        h.y += h.speedY;
+        h.sway += h.swaySpeed;
+        h.x += Math.sin(h.sway) * 0.5 + h.speedX;
+
+        if (h.y < -40) {
+          h.y = decoCanvas.height + 40;
+          h.x = Math.random() * decoCanvas.width;
+        }
+        if (h.x < -40) h.x = decoCanvas.width + 40;
+        if (h.x > decoCanvas.width + 40) h.x = -40;
+
+        decoCtx.fillStyle = h.color;
+        decoCtx.globalAlpha = 0.8;
+        drawHeart(decoCtx, h.x, h.y, h.size, Math.sin(time * 0.015 + h.sway) * 0.3);
+      });
+      decoCtx.globalAlpha = 1;
+      floatingHeartsAnimId = requestAnimationFrame(drawAndUpdateFloatingHearts);
+    }
+
+    function startFloatingHearts(which) {
+      resizeDecoCanvas();
+      createFloatingHearts();
+      if (!floatingHeartsAnimId) {
+        floatingHeartsAnimId = requestAnimationFrame(drawAndUpdateFloatingHearts);
+      }
+    }
+
+    function stopFloatingHearts() {
+      if (floatingHeartsAnimId) {
+        cancelAnimationFrame(floatingHeartsAnimId);
+        floatingHeartsAnimId = null;
+      }
+    }
+
+    // ========== 闪烁爱心粒子（结果 C 页面） ==========
+    function startSparkleHearts() {
+      resizeDecoCanvas();
+      sparkleParticles = [];
+      const colors = ['#ff6b6b', '#ffd93d', '#ff9a9e', '#fff', '#ffb3b3', '#fecfef'];
+      for (let i = 0; i < 60; i++) {
+        sparkleParticles.push({
+          x: Math.random() * decoCanvas.width,
+          y: Math.random() * decoCanvas.height,
+          size: 3 + Math.random() * 8,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          twinkle: Math.random() * Math.PI * 2,
+          twinkleSpeed: 0.03 + Math.random() * 0.06,
+          life: Math.random(),
+        });
+      }
+
+      function sparkleLoop(time) {
+        if (currentPage !== 'result-c-page') return;
+        decoCtx.clearRect(0, 0, decoCanvas.width, decoCanvas.height);
+        sparkleParticles.forEach(p => {
+          p.twinkle += p.twinkleSpeed;
+          const alpha = 0.3 + Math.abs(Math.sin(p.twinkle)) * 0.7;
+          decoCtx.fillStyle = p.color;
+          decoCtx.globalAlpha = alpha;
+          decoCtx.beginPath();
+          decoCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          decoCtx.fill();
+        });
+        decoCtx.globalAlpha = 1;
+        if (currentPage === 'result-c-page') {
+          requestAnimationFrame(sparkleLoop);
+        }
+      }
+      requestAnimationFrame(sparkleLoop);
+    }
+
+    // ========== 彩带效果（生日页面） ==========
+    const confettiCanvas = document.getElementById('confetti-canvas');
+    const confettiCtx = confettiCanvas.getContext('2d');
+    let confettiPieces = [];
+    let confettiAnimId = null;
+
+    function resizeConfettiCanvas() {
+      if (!confettiCanvas) return;
+      confettiCanvas.width = window.innerWidth;
+      confettiCanvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeConfettiCanvas);
+    resizeConfettiCanvas();
 
     function createConfetti() {
       const colors = [
@@ -375,8 +963,8 @@
       confettiPieces = [];
       for (let i = 0; i < 180; i++) {
         confettiPieces.push({
-          x: Math.random() * canvas.width,
-          y: Math.random() * canvas.height - canvas.height,
+          x: Math.random() * confettiCanvas.width,
+          y: Math.random() * confettiCanvas.height - confettiCanvas.height,
           w: Math.random() * 12 + 5,
           h: Math.random() * 8 + 3,
           color: colors[Math.floor(Math.random() * colors.length)],
@@ -392,14 +980,14 @@
     }
 
     function drawConfetti() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
       confettiPieces.forEach(p => {
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate((p.rotation * Math.PI) / 180);
-        ctx.fillStyle = p.color;
-        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
-        ctx.restore();
+        confettiCtx.save();
+        confettiCtx.translate(p.x, p.y);
+        confettiCtx.rotate((p.rotation * Math.PI) / 180);
+        confettiCtx.fillStyle = p.color;
+        confettiCtx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        confettiCtx.restore();
       });
     }
 
@@ -409,39 +997,39 @@
         p.time += p.swaySpeed;
         p.x += Math.sin(p.time) * p.swayAmount + p.speedX * 0.3;
         p.rotation += p.rotationSpeed;
-
-        // 循环：超出底部后回到顶部
-        if (p.y > canvas.height + 20) {
+        if (p.y > confettiCanvas.height + 20) {
           p.y = -20;
-          p.x = Math.random() * canvas.width;
+          p.x = Math.random() * confettiCanvas.width;
         }
-        // 水平循环
-        if (p.x > canvas.width + 30) p.x = -30;
-        if (p.x < -30) p.x = canvas.width + 30;
+        if (p.x > confettiCanvas.width + 30) p.x = -30;
+        if (p.x < -30) p.x = confettiCanvas.width + 30;
       });
     }
 
     function confettiLoop() {
       drawConfetti();
       updateConfetti();
-      animationId = requestAnimationFrame(confettiLoop);
+      confettiAnimId = requestAnimationFrame(confettiLoop);
     }
 
     function startConfetti() {
-      resizeCanvas();
+      resizeConfettiCanvas();
       createConfetti();
-      if (!animationId) confettiLoop();
+      if (!confettiAnimId) confettiLoop();
     }
 
     function stopConfetti() {
-      if (animationId) {
-        cancelAnimationFrame(animationId);
-        animationId = null;
+      if (confettiAnimId) {
+        cancelAnimationFrame(confettiAnimId);
+        confettiAnimId = null;
       }
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (confettiCtx) confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
     }
 
-    // ========== 加载信件内容（如果用户编辑了 letter.txt） ==========
+    // ========== 初始化：启动登录页背景 ==========
+    document.body.classList.add('bg-login');
+
+    // ========== 加载信件内容 ==========
     fetch('letter.txt')
       .then(res => {
         if (res.ok) return res.text();
@@ -454,9 +1042,7 @@
           content.classList.remove('placeholder');
         }
       })
-      .catch(() => {
-        // 没有信件文件，保持占位文字
-      });
+      .catch(() => {});
   </script>
 </body>
 </html>
