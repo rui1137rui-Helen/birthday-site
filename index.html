@@ -486,14 +486,10 @@
     .gallery-wrapper {
       position: relative;
       z-index: 2;
-      width: 95%;
-      max-width: 900px;
-      height: 80vh;
+      width: 98vw;
+      height: 82vh;
       margin: 0 auto;
-      opacity: 0;
-      transition: opacity 0.6s ease;
     }
-    .gallery-wrapper.loaded { opacity: 1; }
 
     .gallery-heart {
       position: relative;
@@ -503,18 +499,32 @@
 
     .gallery-photo {
       position: absolute;
-      border-radius: 8px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
       cursor: pointer;
-      transition: transform 0.3s ease, box-shadow 0.3s ease, z-index 0.3s;
       object-fit: cover;
-      border: 3px solid rgba(255,255,255,0.8);
+      border: 2px solid rgba(255,255,255,0.7);
+      opacity: 0;
+      transition: opacity 0.3s ease, transform 0.25s ease, box-shadow 0.25s ease;
+      contain: layout style paint;
     }
+    .gallery-photo.shown { opacity: 1; }
 
     .gallery-photo:hover {
-      transform: scale(1.15) rotate(0deg) !important;
+      transform: scale(1.2) rotate(0deg) !important;
       box-shadow: 0 12px 35px rgba(0,0,0,0.35);
       z-index: 999 !important;
+    }
+
+    /* 照片墙加载提示 */
+    .gallery-loading {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      color: rgba(255,255,255,0.7);
+      font-size: 1rem;
+      z-index: 5;
+      pointer-events: none;
     }
 
     /* ========== 灯箱（点击放大） ========== */
@@ -687,8 +697,10 @@
 
   <!-- ==================== 照片墙页面 ==================== -->
   <div class="page" id="gallery-page">
-    <div class="gallery-wrapper">
-      <div class="gallery-heart" id="gallery-heart"></div>
+  <div class="gallery-wrapper">
+      <div class="gallery-heart" id="gallery-heart">
+        <p class="gallery-loading" id="gallery-loading">💕 加载中...</p>
+      </div>
     </div>
   </div>
 
@@ -766,11 +778,10 @@
 
       if (pageId === 'gallery-page') {
         const gh = document.getElementById('gallery-heart');
-        if (gh) gh.innerHTML = '';
-        const gw = document.querySelector('.gallery-wrapper');
-        if (gw) gw.classList.remove('loaded');
+        if (gh) gh.innerHTML = '<p class="gallery-loading" id="gallery-loading">💕 加载中...</p>';
         galleryBuilt = false;
-        setTimeout(buildGallery, 100);
+        galleryLoaded = 0;
+        setTimeout(buildGallery, 150);
       }
 
       if (pageId === 'result-a-page') startFloatingHearts('A');
@@ -1180,47 +1191,56 @@
     ];
 
     let galleryBuilt = false;
+    let galleryLoaded = 0;
 
     function buildGallery() {
       if (galleryBuilt) return;
+      galleryBuilt = true;
 
       const container = document.getElementById('gallery-heart');
+      const loadingEl = document.getElementById('gallery-loading');
+      const cw = window.innerWidth * 0.98;
+      const ch = window.innerHeight * 0.8;
 
-      // 直接用视口尺寸，不依赖容器布局（避免 display:none→flex 切换时的时序问题）
-      const cw = Math.min(window.innerWidth * 0.95, 900);
-      const ch = window.innerHeight * 0.78;
-
-      if (cw <= 0 || ch <= 0) {
-        setTimeout(buildGallery, 50);
+      if (cw < 200 || ch < 200) {
+        galleryBuilt = false;
+        setTimeout(buildGallery, 100);
         return;
       }
 
-      galleryBuilt = true;
       const centerX = cw / 2;
       const centerY = ch / 2;
-      const scaleX = cw / 38;
-      const scaleY = ch / 34;
+      // 爱心撑满整个区域
+      const scaleX = cw / 40;
+      const scaleY = ch / 36;
+
       const n = PHOTOS.length;
+      const total = n;
+
+      // 使用 DocumentFragment 一次性插入 DOM，避免 reflow 风暴
+      const fragment = document.createDocumentFragment();
 
       for (let i = 0; i < n; i++) {
         const t = Math.random() * Math.PI * 2;
-        const r = Math.sqrt(Math.random());
+        const r = Math.pow(Math.random(), 0.7);  // 略偏向边缘，不集中在中心
 
         const hx = 16 * Math.pow(Math.sin(t), 3);
         const hy = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
 
-        const jitterX = (Math.random() - 0.5) * 2.5;
-        const jitterY = (Math.random() - 0.5) * 2.5;
+        // 增加随机扩散
+        const jitterX = (Math.random() - 0.5) * 4.0;
+        const jitterY = (Math.random() - 0.5) * 4.0;
 
         const left = centerX + (hx * r + jitterX) * scaleX;
         const top = centerY + (hy * r + jitterY) * scaleY;
 
-        const size = 42 + Math.random() * 38;
-        const rotation = (Math.random() - 0.5) * 45;
-        const zIdx = i;
+        const size = 35 + Math.random() * 35;
+        const rotation = (Math.random() - 0.5) * 50;
+        const zIdx = Math.floor(left + top);
 
         const img = document.createElement('img');
-        img.src = PHOTOS[i];
+        img.setAttribute('loading', 'lazy');
+        img.setAttribute('decoding', 'async');
         img.className = 'gallery-photo';
         img.style.cssText = `
           left: ${left - size/2}px;
@@ -1230,18 +1250,58 @@
           transform: rotate(${rotation}deg);
           z-index: ${zIdx};
         `;
-        // 加载失败时输出调试信息
-        img.onerror = function() {
-          console.warn('Failed to load:', PHOTOS[i]);
+        // 保存原始旋转角度，hover 时不会丢失
+        img.dataset.rotation = rotation;
+        img.dataset.src = PHOTOS[i];
+
+        // 图片加载完成后淡入
+        img.onload = function() {
+          this.classList.add('shown');
+          galleryLoaded++;
+          if (galleryLoaded >= total && loadingEl) {
+            loadingEl.style.display = 'none';
+          }
         };
+        img.onerror = function() {
+          galleryLoaded++;
+          if (galleryLoaded >= total && loadingEl) {
+            loadingEl.style.display = 'none';
+          }
+        };
+
         img.addEventListener('click', (e) => {
           e.stopPropagation();
-          openLightbox(PHOTOS[i]);
+          openLightbox(img.dataset.src);
         });
-        container.appendChild(img);
+
+        fragment.appendChild(img);
       }
 
-      document.querySelector('.gallery-wrapper').classList.add('loaded');
+      // 一次性插入所有节点
+      container.appendChild(fragment);
+
+      // 分批设置 src，避免同时发起 117 个请求
+      const imgs = container.querySelectorAll('.gallery-photo');
+      let batchIndex = 0;
+      const BATCH_SIZE = 10;
+      const BATCH_DELAY = 30;
+
+      function loadBatch() {
+        const start = batchIndex * BATCH_SIZE;
+        const end = Math.min(start + BATCH_SIZE, imgs.length);
+
+        for (let j = start; j < end; j++) {
+          imgs[j].src = imgs[j].dataset.src;
+        }
+
+        batchIndex++;
+        if (batchIndex * BATCH_SIZE < imgs.length) {
+          setTimeout(loadBatch, BATCH_DELAY);
+        }
+      }
+
+      // 先显示前几张，其余分批
+      loadBatch();
     }
 
     // ========== 灯箱 ==========
