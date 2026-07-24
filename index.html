@@ -1208,75 +1208,57 @@
         return;
       }
 
-      // ---- 1. 用离屏 canvas 渲染 "20❤️" 形状 ----
+      // ---- 1. 决定照片尺寸 ---- 每个格子一张照片，固定间距保证不重叠
+      // 计算：让形状区域能容纳所有照片，照片尺寸在 25-40px 之间
+      const targetArea = cw * ch * 0.55; // 形状大约占55%画布面积
+      const cellArea = targetArea / PHOTOS.length;
+      const gridStep = Math.round(Math.min(42, Math.max(25, Math.sqrt(cellArea))));
+      const photoSize = gridStep - 3; // 照片比格距略小，留出间隙
+
+      // ---- 2. 离屏 canvas 渲染 "20❤️" ----
       const offCanvas = document.createElement('canvas');
       offCanvas.width = cw;
       offCanvas.height = ch;
       const ctx = offCanvas.getContext('2d');
 
       ctx.fillStyle = '#000';
+      const baseSize = Math.min(cw / 5.5, ch / 2);
 
-      // 整体参考字号
-      const baseSize = Math.min(cw / 6, ch / 2.2);
-
-      // -- 数字 "2" --
-      ctx.font = `900 ${baseSize * 1.15}px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif`;
+      ctx.font = `900 ${baseSize * 1.2}px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('2', cw * 0.18, ch * 0.5);
+      ctx.fillText('2', cw * 0.17, ch * 0.5);
+      ctx.fillText('0', cw * 0.43, ch * 0.5);
 
-      // -- 数字 "0" --
-      ctx.fillText('0', cw * 0.44, ch * 0.5);
-
-      // -- 爱心符号 --
-      ctx.font = `900 ${baseSize * 1.35}px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif`;
-      // macOS / iOS 上 emoji ❤️ 偏上，所以把 y 调低一点
+      ctx.font = `900 ${baseSize * 1.4}px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif`;
       ctx.fillText('❤️', cw * 0.72, ch * 0.48);
 
-      // ---- 2. 采样所有形状内的像素 ----
+      // ---- 3. 固定间距网格采样形状内的点（每个格子一个点 = 不重叠） ----
       const imageData = ctx.getImageData(0, 0, cw, ch);
       const pixels = imageData.data;
-      const allPoints = [];
+      const shapeCells = [];
 
-      const step = 2; // 每 2px 采样一次，保证足够密
-      for (let y = 0; y < ch; y += step) {
-        for (let x = 0; x < cw; x += step) {
-          const alpha = pixels[(y * cw + x) * 4 + 3];
-          if (alpha > 100) {
-            allPoints.push({ x, y });
+      for (let y = gridStep; y < ch - gridStep; y += gridStep) {
+        for (let x = gridStep; x < cw - gridStep; x += gridStep) {
+          const idx = (Math.round(y) * cw + Math.round(x)) * 4 + 3;
+          if (pixels[idx] > 80) {
+            shapeCells.push({ x, y });
           }
         }
       }
 
-      // ---- 3. 随机打乱后均匀取点 ----
-      for (let i = allPoints.length - 1; i > 0; i--) {
+      // ---- 4. 从形状格子中随机选出足够位置 ----
+      for (let i = shapeCells.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        [allPoints[i], allPoints[j]] = [allPoints[j], allPoints[i]];
+        [shapeCells[i], shapeCells[j]] = [shapeCells[j], shapeCells[i]];
       }
 
-      const n = PHOTOS.length;
-      const total = n;
-      const pickStep = Math.max(1, Math.floor(allPoints.length / total));
+      const needed = PHOTOS.length;
       const chosen = [];
-      for (let i = 0; i < total && i * pickStep < allPoints.length; i++) {
-        chosen.push(allPoints[i * pickStep]);
-      }
-
-      // ---- 4. 去重去重叠：如果两张照片中心太近，把其中一张微调 ----
-      const MIN_DIST = 20; // 最小中心间距（px）
-      for (let i = 0; i < chosen.length; i++) {
-        for (let j = i + 1; j < chosen.length; j++) {
-          const dx = chosen[i].x - chosen[j].x;
-          const dy = chosen[i].y - chosen[j].y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < MIN_DIST && dist > 0) {
-            const pushX = (dx / dist) * (MIN_DIST - dist) * 0.6;
-            const pushY = (dy / dist) * (MIN_DIST - dist) * 0.6;
-            chosen[i].x += pushX;
-            chosen[i].y += pushY;
-            chosen[j].x -= pushX;
-            chosen[j].y -= pushY;
-          }
+      // 如果格子不够，循环复用（每张照片占一个唯一格子）
+      for (let i = 0; i < needed; i++) {
+        if (shapeCells.length > 0) {
+          chosen.push(shapeCells[i % shapeCells.length]);
         }
       }
 
@@ -1285,28 +1267,19 @@
 
       for (let i = 0; i < chosen.length; i++) {
         const pos = chosen[i];
-        // 微弱的随机抖动，让排列看起来自然
-        const jitterX = (Math.random() - 0.5) * 4;
-        const jitterY = (Math.random() - 0.5) * 4;
-
-        const left = Math.max(0, pos.x + jitterX);
-        const top = Math.max(0, pos.y + jitterY);
-        const size = 35 + Math.random() * 30;
-        const rotation = (Math.random() - 0.5) * 30;
-        const zIdx = i;
+        // 在格子内微小抖动，看起来更自然
+        const jitX = (Math.random() - 0.5) * 3;
+        const jitY = (Math.random() - 0.5) * 3;
+        const left = pos.x + jitX;
+        const top = pos.y + jitY;
+        const size = photoSize * (0.85 + Math.random() * 0.3);
+        const rotation = (Math.random() - 0.5) * 25;
 
         const img = document.createElement('img');
         img.setAttribute('loading', 'lazy');
         img.setAttribute('decoding', 'async');
         img.className = 'gallery-photo';
-        img.style.cssText = `
-          left: ${left - size/2}px;
-          top: ${top - size/2}px;
-          width: ${size}px;
-          height: ${size}px;
-          transform: rotate(${rotation}deg);
-          z-index: ${zIdx};
-        `;
+        img.style.cssText = 'left:'+(left-size/2)+'px;top:'+(top-size/2)+'px;width:'+size+'px;height:'+size+'px;transform:rotate('+rotation+'deg);z-index:'+i+';';
         img.dataset.src = PHOTOS[i % PHOTOS.length];
 
         img.onload = function() {
@@ -1322,7 +1295,6 @@
             loadingEl.style.display = 'none';
           }
         };
-
         img.addEventListener('click', (e) => {
           e.stopPropagation();
           openLightbox(img.dataset.src);
@@ -1331,26 +1303,19 @@
         fragment.appendChild(img);
       }
 
-      // ---- 6. 插入 DOM 并分批加载 ----
       container.appendChild(fragment);
 
+      // ---- 分批加载 ----
       const imgs = container.querySelectorAll('.gallery-photo');
       let batchIndex = 0;
       const BATCH_SIZE = 8;
-      const BATCH_DELAY = 40;
-
       function loadBatch() {
         const start = batchIndex * BATCH_SIZE;
         const end = Math.min(start + BATCH_SIZE, imgs.length);
-        for (let j = start; j < end; j++) {
-          imgs[j].src = imgs[j].dataset.src;
-        }
+        for (let j = start; j < end; j++) imgs[j].src = imgs[j].dataset.src;
         batchIndex++;
-        if (batchIndex * BATCH_SIZE < imgs.length) {
-          setTimeout(loadBatch, BATCH_DELAY);
-        }
+        if (batchIndex * BATCH_SIZE < imgs.length) setTimeout(loadBatch, 40);
       }
-
       loadBatch();
     }
 
