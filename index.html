@@ -482,6 +482,84 @@
       color: #fff;
     }
 
+    /* ========== 照片墙页面 ========== */
+    .gallery-wrapper {
+      position: relative;
+      z-index: 2;
+      width: 95%;
+      max-width: 900px;
+      height: 80vh;
+      margin: 0 auto;
+      animation: fadeInUp 0.8s ease;
+    }
+
+    .gallery-heart {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    .gallery-photo {
+      position: absolute;
+      border-radius: 8px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      cursor: pointer;
+      transition: transform 0.3s ease, box-shadow 0.3s ease, z-index 0.3s;
+      object-fit: cover;
+      border: 3px solid rgba(255,255,255,0.8);
+    }
+
+    .gallery-photo:hover {
+      transform: scale(1.15) rotate(0deg) !important;
+      box-shadow: 0 12px 35px rgba(0,0,0,0.35);
+      z-index: 999 !important;
+    }
+
+    /* ========== 灯箱（点击放大） ========== */
+    .lightbox-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.92);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+    }
+    .lightbox-overlay.active { display: flex; }
+
+    .lightbox-img {
+      max-width: 92vw;
+      max-height: 92vh;
+      object-fit: contain;
+      border-radius: 8px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      animation: fadeIn 0.3s ease;
+    }
+
+    /* ========== 照片墙返回按钮 ========== */
+    .gallery-back-btn {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 100;
+      padding: 10px 24px;
+      background: rgba(255,255,255,0.25);
+      backdrop-filter: blur(10px);
+      color: #fff;
+      border: 2px solid rgba(255,255,255,0.5);
+      border-radius: 50px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.3s;
+      letter-spacing: 1px;
+    }
+    .gallery-back-btn:hover {
+      background: rgba(255,255,255,0.4);
+      transform: translateY(-2px);
+    }
+
     /* ========== 响应式 ========== */
     @media (max-width: 480px) {
       .login-card, .letter-card, .quiz-card {
@@ -573,6 +651,7 @@
       <h1>🎀 恭喜你进入20岁呀！</h1>
       <p class="result-subtitle">但是还有隐藏界面在别的选项哦～</p>
       <button class="back-quiz-btn" onclick="showPage('quiz-page')">← 返回上一页</button>
+      <button class="continue-btn" style="margin-top:20px; font-size:0.95rem; padding:14px 30px;" onclick="showPage('gallery-page')">点击即可查看可爱的呆萌的帅气的搞怪的认真的漂亮的我爱的爱我的昕昕宝贝的百般模样 💕</button>
     </div>
   </div>
 
@@ -601,6 +680,19 @@
     </div>
   </div>
 
+  <!-- ==================== 照片墙页面 ==================== -->
+  <div class="page" id="gallery-page">
+    <div class="gallery-wrapper">
+      <div class="gallery-heart" id="gallery-heart"></div>
+    </div>
+    <button class="gallery-back-btn" onclick="showPage('result-b-page')">← 返回</button>
+  </div>
+
+  <!-- ==================== 灯箱 ==================== -->
+  <div class="lightbox-overlay" id="lightbox" onclick="closeLightbox()">
+    <img class="lightbox-img" id="lightbox-img" src="" alt="" />
+  </div>
+
   <!-- ==================== 第6页：信件 ==================== -->
   <div class="page" id="letter-page">
     <div class="letter-card">
@@ -626,6 +718,7 @@
       'result-c-page': 'bg-congrats',
       'birthday-page': 'bg-birthday',
       'letter-page': 'bg-romantic',
+      'gallery-page': 'bg-love',
     };
 
     // ========== 页面切换 ==========
@@ -649,6 +742,10 @@
         updateCounter();
       } else {
         stopHeartTrees();
+      }
+
+      if (pageId === 'gallery-page') {
+        setTimeout(buildGallery, 100);
       }
 
       if (pageId === 'result-a-page') startFloatingHearts('A');
@@ -1027,6 +1124,96 @@
 
     // ========== 初始化：启动登录页背景 ==========
     document.body.classList.add('bg-login');
+
+    // ========== 照片墙：爱心形状布局 ==========
+    const PHOTOS = [
+      '49117.jpg','51575.jpg','51576.jpg','51601.jpg','57030.jpg','57037.jpg','57050.jpg','57334.jpg','58371.jpg',
+      '5d8e73871e724494d2ce313f8544e93e.jpg','60423.jpg','61325.jpg','61504.jpg','61505.jpg','61511.jpg','61700.jpg',
+      '6d06890acb1a7d93e44c236abb396b60.jpg','9548_livephoto.jpeg','98981cfd16e35e5cee095b2719feeaad.jpg',
+      '9c29ca50796cba0c08c9d41180687a94.jpg','a4100f80bde34719cb7d97bfd33c1814.jpeg',
+      'af20ae076252f5e76017dbb08847aa_livephoto.jpeg','bbcfadff53babb94554982be075f31_livephoto.jpeg',
+      'bcbb91eaa908cc7896c991ed9d3cb190.jpg','IMG_0348.jpeg','IMG_0364.jpeg','IMG_0373.jpeg','IMG_0887.jpeg',
+      'IMG_1084.jpeg','IMG_1115.jpeg','IMG_1208.jpeg','IMG_1301.jpeg','IMG_1439.jpeg','IMG_1516.JPG','IMG_1689.JPG',
+      'IMG_1761.jpeg','IMG_2137.PNG','IMG_2701.jpeg','IMG_2763.jpeg','IMG_2786.jpeg','IMG_2804.jpeg','IMG_2814.jpeg',
+      'IMG_3180.jpeg','IMG_3221.jpeg','IMG_3262.jpeg','IMG_3337.jpeg','IMG_3369.jpeg','IMG_3439.jpeg','IMG_3506.jpeg',
+      'IMG_3514.jpeg','IMG_3550.jpeg','IMG_3595.jpeg','IMG_3625.jpeg','IMG_3662.jpeg','IMG_3719.JPG','IMG_3735.JPG',
+      'IMG_4089.jpeg','IMG_4508.JPG','IMG_4588.jpeg','IMG_4672.jpeg','IMG_4886.jpeg','IMG_4915.jpeg','IMG_4977.jpeg',
+      'IMG_4998.jpeg','IMG_5015.jpeg','IMG_5021.jpeg','IMG_5030.jpeg','IMG_5074.jpeg','IMG_5179.jpeg','IMG_5262.jpeg',
+      'IMG_5335.jpeg','IMG_5339.jpeg','IMG_5668.JPG','IMG_5688.jpeg','IMG_5741.jpeg','IMG_5746.jpeg','IMG_5968.jpeg',
+      'IMG_5976.jpeg','IMG_5988.jpeg','IMG_6056.JPG','IMG_6078.PNG','IMG_6084.PNG','IMG_6133.jpeg','IMG_6163.jpeg',
+      'IMG_6191.PNG','IMG_6202.jpeg','IMG_6315.jpeg','IMG_6336.jpeg','IMG_6354.jpeg','IMG_6514.JPG','IMG_6517.jpeg',
+      'IMG_6528.jpeg','IMG_6587.jpeg','IMG_6623.jpeg','IMG_6638.jpeg','IMG_6642.jpeg','IMG_6727.jpeg','IMG_6760.JPG',
+      'IMG_6761.JPG','IMG_6806.JPG','IMG_6828.jpeg','IMG_7045.PNG','IMG_7236.jpeg','IMG_7500.PNG','IMG_7541.PNG',
+      'IMG_8199.PNG','IMG_8417.jpeg','IMG_8418.jpeg','IMG_8420.jpeg','IMG_9398.jpeg','IMG_9500.PNG','IMG_9727.jpeg',
+      'IMG_9734.jpeg','IMG_9799.jpeg','IMG_9822.jpeg','IMG_9969.PNG'
+    ];
+
+    let galleryBuilt = false;
+
+    function buildGallery() {
+      if (galleryBuilt) return;
+      galleryBuilt = true;
+
+      const container = document.getElementById('gallery-heart');
+      const n = PHOTOS.length;
+      const centerX = container.clientWidth / 2;
+      const centerY = container.clientHeight / 2;
+      const scaleX = container.clientWidth / 28;
+      const scaleY = container.clientHeight / 26;
+
+      // 爱心参数方程: x=16sin³(t), y=13cos(t)-5cos(2t)-2cos(3t)-cos(4t)
+      for (let i = 0; i < n; i++) {
+        const t = (i / n) * Math.PI * 2;
+        const hx = 16 * Math.pow(Math.sin(t), 3);
+        const hy = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
+
+        // 加入一定随机偏移，制造重叠交错效果
+        const jitterX = (Math.random() - 0.5) * 1.5;
+        const jitterY = (Math.random() - 0.5) * 1.5;
+
+        const left = centerX + (hx + jitterX) * scaleX;
+        const top = centerY + (hy + jitterY) * scaleY;
+
+        const size = 55 + Math.random() * 40; // 不同大小
+        const rotation = (Math.random() - 0.5) * 30; // 随机旋转 ±15度
+        const zIdx = Math.floor(top); // 靠下的图片在上层
+
+        const img = document.createElement('img');
+        img.src = PHOTOS[i];
+        img.className = 'gallery-photo';
+        img.style.cssText = `
+          left: ${left - size/2}px;
+          top: ${top - size/2}px;
+          width: ${size}px;
+          height: ${size}px;
+          transform: rotate(${rotation}deg);
+          z-index: ${zIdx};
+        `;
+        img.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openLightbox(PHOTOS[i]);
+        });
+
+        container.appendChild(img);
+      }
+    }
+
+    // ========== 灯箱 ==========
+    function openLightbox(src) {
+      document.getElementById('lightbox-img').src = src;
+      document.getElementById('lightbox').classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
+      document.getElementById('lightbox').classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    // ESC 关闭灯箱
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeLightbox();
+    });
 
     // ========== 加载信件内容 ==========
     fetch('letter.txt')
