@@ -1222,27 +1222,46 @@
       const ctx = offCanvas.getContext('2d');
 
       ctx.fillStyle = '#000';
-      const baseSize = Math.min(cw / 5.5, ch / 2);
+      // 字号要足够大，让形状填满画布，确保有足够的格子放照片
+      const baseSize = Math.min(cw / 2.5, ch / 1.8);
 
-      ctx.font = `900 ${baseSize * 1.2}px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif`;
+      ctx.font = `900 ${baseSize * 1.1}px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('2', cw * 0.17, ch * 0.5);
-      ctx.fillText('0', cw * 0.43, ch * 0.5);
+      ctx.fillText('2', cw * 0.18, ch * 0.48);
+      ctx.fillText('0', cw * 0.44, ch * 0.48);
 
-      ctx.font = `900 ${baseSize * 1.4}px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif`;
-      ctx.fillText('❤️', cw * 0.72, ch * 0.48);
+      ctx.font = `900 ${baseSize * 1.3}px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif`;
+      ctx.fillText('❤️', cw * 0.72, ch * 0.46);
 
-      // ---- 3. 固定间距网格采样形状内的点（每个格子一个点 = 不重叠） ----
+      // ---- 3. 固定间距网格采样形状内的点 ----
       const imageData = ctx.getImageData(0, 0, cw, ch);
       const pixels = imageData.data;
       const shapeCells = [];
+      const mh = Math.round(gridStep / 2); // 加上半个格距的边距
 
-      for (let y = gridStep; y < ch - gridStep; y += gridStep) {
-        for (let x = gridStep; x < cw - gridStep; x += gridStep) {
+      for (let y = mh; y < ch - mh; y += gridStep) {
+        for (let x = mh; x < cw - mh; x += gridStep) {
           const idx = (Math.round(y) * cw + Math.round(x)) * 4 + 3;
           if (pixels[idx] > 80) {
             shapeCells.push({ x, y });
+          }
+        }
+      }
+
+      // 如果格子不够（小屏幕极端情况），缩小格距重新采样
+      let actualStep = gridStep;
+      let actualPhotoSize = photoSize;
+      if (shapeCells.length < PHOTOS.length) {
+        shapeCells.length = 0;
+        actualStep = Math.round(gridStep * 0.7);
+        actualPhotoSize = actualStep - 3;
+        for (let y = mh; y < ch - mh; y += actualStep) {
+          for (let x = mh; x < cw - mh; x += actualStep) {
+            const idx = (Math.round(y) * cw + Math.round(x)) * 4 + 3;
+            if (pixels[idx] > 80) {
+              shapeCells.push({ x, y });
+            }
           }
         }
       }
@@ -1255,12 +1274,13 @@
 
       const needed = PHOTOS.length;
       const chosen = [];
-      // 如果格子不够，循环复用（每张照片占一个唯一格子）
-      for (let i = 0; i < needed; i++) {
-        if (shapeCells.length > 0) {
-          chosen.push(shapeCells[i % shapeCells.length]);
-        }
+      // 只取不重复的格子，不循环复用
+      const limit = Math.min(needed, shapeCells.length);
+      for (let i = 0; i < limit; i++) {
+        chosen.push(shapeCells[i]);
       }
+      // 如果有照片放不下，只显示能放下的部分
+      const totalRender = chosen.length;
 
       // ---- 5. 创建照片元素 ----
       const fragment = document.createDocumentFragment();
@@ -1268,11 +1288,11 @@
       for (let i = 0; i < chosen.length; i++) {
         const pos = chosen[i];
         // 在格子内微小抖动，看起来更自然
-        const jitX = (Math.random() - 0.5) * 3;
-        const jitY = (Math.random() - 0.5) * 3;
+        const jitX = (Math.random() - 0.5) * 2;
+        const jitY = (Math.random() - 0.5) * 2;
         const left = pos.x + jitX;
         const top = pos.y + jitY;
-        const size = photoSize * (0.85 + Math.random() * 0.3);
+        const size = actualPhotoSize * (0.85 + Math.random() * 0.3);
         const rotation = (Math.random() - 0.5) * 25;
 
         const img = document.createElement('img');
