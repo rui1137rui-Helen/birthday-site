@@ -1208,133 +1208,127 @@
         return;
       }
 
-      // ---- 1. 决定照片尺寸 ---- 每个格子一张照片，固定间距保证不重叠
-      // 计算：让形状区域能容纳所有照片，照片尺寸在 25-40px 之间
-      const targetArea = cw * ch * 0.55; // 形状大约占55%画布面积
-      const cellArea = targetArea / PHOTOS.length;
-      const gridStep = Math.round(Math.min(42, Math.max(25, Math.sqrt(cellArea))));
-      const photoSize = gridStep - 3; // 照片比格距略小，留出间隙
+      // ---- 1. 决定间距：让116张照片均匀分布 ----
+      const gridStep = Math.round(Math.min(38, Math.max(24, Math.sqrt(cw * ch * 0.4 / PHOTOS.length))));
+      const photoSize = gridStep - 4;
+      const halfG = gridStep / 2;
 
-      // ---- 2. 离屏 canvas 渲染 "20❤️" ----
-      const offCanvas = document.createElement('canvas');
+      // ---- 2. UI canvas 渲染文字 ----
+      const offCanvas = document.getElementById('decoration-canvas');
+      // 借用已有的装饰画布（始终在 DOM 中，字体渲染可靠）
+      const origW = offCanvas.width;
+      const origH = offCanvas.height;
       offCanvas.width = cw;
       offCanvas.height = ch;
       const ctx = offCanvas.getContext('2d');
 
+      ctx.clearRect(0, 0, cw, ch);
       ctx.fillStyle = '#000';
-      // 字号要足够大，让形状填满画布，确保有足够的格子放照片
-      const baseSize = Math.min(cw / 2.5, ch / 1.8);
-
-      ctx.font = `900 ${baseSize * 1.1}px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif`;
+      const fSize = Math.min(cw / 5.5, ch / 1.6);
+      ctx.font = `900 ${fSize * 1.1}px "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('2', cw * 0.18, ch * 0.48);
-      ctx.fillText('0', cw * 0.44, ch * 0.48);
+      ctx.fillText('2', cw * 0.18, ch * 0.5);
+      ctx.fillText('0', cw * 0.44, ch * 0.5);
+      ctx.font = `900 ${fSize * 1.3}px "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif`;
+      ctx.fillText('❤️', cw * 0.72, ch * 0.48);
 
-      ctx.font = `900 ${baseSize * 1.3}px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif`;
-      ctx.fillText('❤️', cw * 0.72, ch * 0.46);
+      // ---- 3. 采样 ----
+      const allPts = [];
+      for (let y = halfG; y < ch - halfG; y += gridStep) {
+        for (let x = halfG; x < cw - halfG; x += gridStep) {
+          const a = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data[3];
+          if (a > 60) allPts.push({x,y});
+        }
+      }
 
-      // ---- 3. 固定间距网格采样形状内的点 ----
-      const imageData = ctx.getImageData(0, 0, cw, ch);
-      const pixels = imageData.data;
-      const shapeCells = [];
-      const mh = Math.round(gridStep / 2); // 加上半个格距的边距
-
-      for (let y = mh; y < ch - mh; y += gridStep) {
-        for (let x = mh; x < cw - mh; x += gridStep) {
-          const idx = (Math.round(y) * cw + Math.round(x)) * 4 + 3;
-          if (pixels[idx] > 80) {
-            shapeCells.push({ x, y });
+      // 格子不够则缩小格距
+      if (allPts.length < PHOTOS.length) {
+        allPts.length = 0;
+        const denser = Math.round(gridStep * 0.6);
+        for (let y = halfG; y < ch - halfG; y += denser) {
+          for (let x = halfG; x < cw - halfG; x += denser) {
+            const a = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data[3];
+            if (a > 40) allPts.push({x,y});
           }
         }
       }
 
-      // 如果格子不够（小屏幕极端情况），缩小格距重新采样
-      let actualStep = gridStep;
-      let actualPhotoSize = photoSize;
-      if (shapeCells.length < PHOTOS.length) {
-        shapeCells.length = 0;
-        actualStep = Math.round(gridStep * 0.7);
-        actualPhotoSize = actualStep - 3;
-        for (let y = mh; y < ch - mh; y += actualStep) {
-          for (let x = mh; x < cw - mh; x += actualStep) {
-            const idx = (Math.round(y) * cw + Math.round(x)) * 4 + 3;
-            if (pixels[idx] > 80) {
-              shapeCells.push({ x, y });
-            }
-          }
-        }
-      }
+      // ---- 4. 恢复装饰画布 ----
+      offCanvas.width = origW;
+      offCanvas.height = origH;
 
-      // ---- 4. 从形状格子中随机选出足够位置 ----
-      for (let i = shapeCells.length - 1; i > 0; i--) {
+      // ---- 5. 洗牌取点 ----
+      for (let i = allPts.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        [shapeCells[i], shapeCells[j]] = [shapeCells[j], shapeCells[i]];
+        [allPts[i], allPts[j]] = [allPts[j], allPts[i]];
       }
 
-      const needed = PHOTOS.length;
-      const chosen = [];
-      // 只取不重复的格子，不循环复用
-      const limit = Math.min(needed, shapeCells.length);
-      for (let i = 0; i < limit; i++) {
-        chosen.push(shapeCells[i]);
-      }
-      // 如果有照片放不下，只显示能放下的部分
-      const totalRender = chosen.length;
+      const renderCount = Math.min(PHOTOS.length, allPts.length);
 
-      // ---- 5. 创建照片元素 ----
+      // ---- 6. 如果还是没有点，fallback 到纯爱心 ----
+      let finalPts;
+      if (renderCount >= 10) {
+        finalPts = allPts.slice(0, renderCount);
+      } else {
+        // 纯爱心 fallback
+        finalPts = [];
+        const hScaleX = cw / 34;
+        const hScaleY = ch / 30;
+        const hCX = cw / 2;
+        const hCY = ch / 2;
+        for (let i = 0; i < PHOTOS.length; i++) {
+          const t = Math.random() * Math.PI * 2;
+          const r = Math.sqrt(Math.random());
+          const hx = 16 * Math.pow(Math.sin(t), 3);
+          const hy = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
+          finalPts.push({ x: hCX + hx * r * hScaleX, y: hCY + hy * r * hScaleY });
+        }
+      }
+
+      // ---- 7. 创建img元素 ----
       const fragment = document.createDocumentFragment();
+      const total = finalPts.length;
 
-      for (let i = 0; i < chosen.length; i++) {
-        const pos = chosen[i];
-        // 在格子内微小抖动，看起来更自然
-        const jitX = (Math.random() - 0.5) * 2;
-        const jitY = (Math.random() - 0.5) * 2;
-        const left = pos.x + jitX;
-        const top = pos.y + jitY;
-        const size = actualPhotoSize * (0.85 + Math.random() * 0.3);
-        const rotation = (Math.random() - 0.5) * 25;
-
+      for (let i = 0; i < total; i++) {
+        const p = finalPts[i];
+        const sz = photoSize * (0.85 + Math.random() * 0.3);
+        const rot = (Math.random() - 0.5) * 25;
         const img = document.createElement('img');
-        img.setAttribute('loading', 'lazy');
-        img.setAttribute('decoding', 'async');
         img.className = 'gallery-photo';
-        img.style.cssText = 'left:'+(left-size/2)+'px;top:'+(top-size/2)+'px;width:'+size+'px;height:'+size+'px;transform:rotate('+rotation+'deg);z-index:'+i+';';
+        img.style.cssText = 'left:'+(p.x-sz/2)+'px;top:'+(p.y-sz/2)+'px;width:'+sz+'px;height:'+sz+'px;transform:rotate('+rot+'deg);z-index:'+i+';';
         img.dataset.src = PHOTOS[i % PHOTOS.length];
 
         img.onload = function() {
           this.classList.add('shown');
           galleryLoaded++;
-          if (galleryLoaded >= chosen.length && loadingEl) {
-            loadingEl.style.display = 'none';
-          }
+          if (galleryLoaded >= total && loadingEl) loadingEl.style.display = 'none';
         };
         img.onerror = function() {
           galleryLoaded++;
-          if (galleryLoaded >= chosen.length && loadingEl) {
-            loadingEl.style.display = 'none';
-          }
+          if (galleryLoaded >= total && loadingEl) loadingEl.style.display = 'none';
         };
-        img.addEventListener('click', (e) => {
+        img.addEventListener('click', function(e) {
           e.stopPropagation();
-          openLightbox(img.dataset.src);
+          openLightbox(this.dataset.src);
         });
-
         fragment.appendChild(img);
       }
 
+      // fallback: 没有照片时直接隐藏loading
+      if (total === 0 && loadingEl) loadingEl.style.display = 'none';
+
       container.appendChild(fragment);
 
-      // ---- 分批加载 ----
-      const imgs = container.querySelectorAll('.gallery-photo');
-      let batchIndex = 0;
-      const BATCH_SIZE = 8;
+      // 分批设置src
+      let batchIdx = 0;
+      const BATCH = 8;
       function loadBatch() {
-        const start = batchIndex * BATCH_SIZE;
-        const end = Math.min(start + BATCH_SIZE, imgs.length);
-        for (let j = start; j < end; j++) imgs[j].src = imgs[j].dataset.src;
-        batchIndex++;
-        if (batchIndex * BATCH_SIZE < imgs.length) setTimeout(loadBatch, 40);
+        const imgs = container.querySelectorAll('.gallery-photo');
+        const s = batchIdx * BATCH, e = Math.min(s + BATCH, imgs.length);
+        for (let j = s; j < e; j++) imgs[j].src = imgs[j].dataset.src;
+        batchIdx++;
+        if (batchIdx * BATCH < imgs.length) setTimeout(loadBatch, 40);
       }
       loadBatch();
     }
