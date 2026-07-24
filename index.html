@@ -746,7 +746,11 @@
       }
 
       if (pageId === 'gallery-page') {
-        setTimeout(buildGallery, 100);
+        // 清空旧内容以便重建
+        const gh = document.getElementById('gallery-heart');
+        if (gh) gh.innerHTML = '';
+        galleryBuilt = false;
+        setTimeout(buildGallery, 200);
       }
 
       if (pageId === 'result-a-page') startFloatingHearts('A');
@@ -1156,47 +1160,57 @@
       galleryBuilt = true;
 
       const container = document.getElementById('gallery-heart');
-      const n = PHOTOS.length;
-      const centerX = container.clientWidth / 2;
-      const centerY = container.clientHeight / 2;
-      const scaleX = container.clientWidth / 28;
-      const scaleY = container.clientHeight / 26;
+      // 等待页面完成渲染后再获取尺寸
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const cw = container.clientWidth;
+          const ch = container.clientHeight;
+          if (cw === 0 || ch === 0) { galleryBuilt = false; return; }
 
-      // 爱心参数方程: x=16sin³(t), y=13cos(t)-5cos(2t)-2cos(3t)-cos(4t)
-      for (let i = 0; i < n; i++) {
-        const t = (i / n) * Math.PI * 2;
-        const hx = 16 * Math.pow(Math.sin(t), 3);
-        const hy = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
+          const centerX = cw / 2;
+          const centerY = ch / 2;
+          const scaleX = cw / 34;   // 留更多边距
+          const scaleY = ch / 30;
 
-        // 加入一定随机偏移，制造重叠交错效果
-        const jitterX = (Math.random() - 0.5) * 1.5;
-        const jitterY = (Math.random() - 0.5) * 1.5;
+          const n = PHOTOS.length;
 
-        const left = centerX + (hx + jitterX) * scaleX;
-        const top = centerY + (hy + jitterY) * scaleY;
+          // 爱心参数方程边界: x(t)=16sin³(t), y(t)=13cos(t)-5cos(2t)-2cos(3t)-cos(4t)
+          // 用随机角度 + 随机半径 sqrt(r) 填充爱心内部（均匀分布）
+          for (let i = 0; i < n; i++) {
+            const t = Math.random() * Math.PI * 2;
+            // sqrt 让内部均匀分布（否则中心过密）
+            const r = Math.sqrt(Math.random());
 
-        const size = 55 + Math.random() * 40; // 不同大小
-        const rotation = (Math.random() - 0.5) * 30; // 随机旋转 ±15度
-        const zIdx = Math.floor(top); // 靠下的图片在上层
+            const hx = 16 * Math.pow(Math.sin(t), 3);
+            const hy = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
 
-        const img = document.createElement('img');
-        img.src = PHOTOS[i];
-        img.className = 'gallery-photo';
-        img.style.cssText = `
-          left: ${left - size/2}px;
-          top: ${top - size/2}px;
-          width: ${size}px;
-          height: ${size}px;
-          transform: rotate(${rotation}deg);
-          z-index: ${zIdx};
-        `;
-        img.addEventListener('click', (e) => {
-          e.stopPropagation();
-          openLightbox(PHOTOS[i]);
+            const left = centerX + hx * r * scaleX;
+            const top = centerY + hy * r * scaleY;
+
+            const size = 50 + Math.random() * 45;
+            const rotation = (Math.random() - 0.5) * 35;
+            const zIdx = Math.floor(top * 100);
+
+            const img = document.createElement('img');
+            img.src = PHOTOS[i];
+            img.className = 'gallery-photo';
+            img.style.cssText = `
+              left: ${left - size/2}px;
+              top: ${top - size/2}px;
+              width: ${size}px;
+              height: ${size}px;
+              transform: rotate(${rotation}deg);
+              z-index: ${zIdx};
+            `;
+            img.addEventListener('click', (e) => {
+              e.stopPropagation();
+              openLightbox(PHOTOS[i]);
+            });
+
+            container.appendChild(img);
+          }
         });
-
-        container.appendChild(img);
-      }
+      });
     }
 
     // ========== 灯箱 ==========
