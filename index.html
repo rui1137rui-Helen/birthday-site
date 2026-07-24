@@ -490,8 +490,10 @@
       max-width: 900px;
       height: 80vh;
       margin: 0 auto;
-      animation: fadeInUp 0.8s ease;
+      opacity: 0;
+      transition: opacity 0.6s ease;
     }
+    .gallery-wrapper.loaded { opacity: 1; }
 
     .gallery-heart {
       position: relative;
@@ -763,11 +765,13 @@
       }
 
       if (pageId === 'gallery-page') {
-        // 清空旧内容以便重建
+        // 清空旧内容并重置
         const gh = document.getElementById('gallery-heart');
         if (gh) gh.innerHTML = '';
+        const gw = document.querySelector('.gallery-wrapper');
+        if (gw) gw.classList.remove('loaded');
         galleryBuilt = false;
-        setTimeout(buildGallery, 200);
+        requestAnimationFrame(buildGallery);
       }
 
       if (pageId === 'result-a-page') startFloatingHearts('A');
@@ -1180,60 +1184,64 @@
 
     function buildGallery() {
       if (galleryBuilt) return;
-      galleryBuilt = true;
 
       const container = document.getElementById('gallery-heart');
-      // 等待页面完成渲染后再获取尺寸
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          const cw = container.clientWidth;
-          const ch = container.clientHeight;
-          if (cw === 0 || ch === 0) { galleryBuilt = false; return; }
+      const cw = container.clientWidth;
+      const ch = container.clientHeight;
 
-          const centerX = cw / 2;
-          const centerY = ch / 2;
-          const scaleX = cw / 34;   // 留更多边距
-          const scaleY = ch / 30;
+      // 容器还没渲染出尺寸，等下一帧再试
+      if (cw === 0 || ch === 0) {
+        requestAnimationFrame(buildGallery);
+        return;
+      }
 
-          const n = PHOTOS.length;
+      galleryBuilt = true;
+      const centerX = cw / 2;
+      const centerY = ch / 2;
+      const scaleX = cw / 36;   // 更大的分母 = 更分散
+      const scaleY = ch / 32;
 
-          // 爱心参数方程边界: x(t)=16sin³(t), y(t)=13cos(t)-5cos(2t)-2cos(3t)-cos(4t)
-          // 用随机角度 + 随机半径 sqrt(r) 填充爱心内部（均匀分布）
-          for (let i = 0; i < n; i++) {
-            const t = Math.random() * Math.PI * 2;
-            // sqrt 让内部均匀分布（否则中心过密）
-            const r = Math.sqrt(Math.random());
+      const n = PHOTOS.length;
 
-            const hx = 16 * Math.pow(Math.sin(t), 3);
-            const hy = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
+      for (let i = 0; i < n; i++) {
+        const t = Math.random() * Math.PI * 2;
+        const r = Math.sqrt(Math.random());  // sqrt 让内部均匀
 
-            const left = centerX + hx * r * scaleX;
-            const top = centerY + hy * r * scaleY;
+        const hx = 16 * Math.pow(Math.sin(t), 3);
+        const hy = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
 
-            const size = 50 + Math.random() * 45;
-            const rotation = (Math.random() - 0.5) * 35;
-            const zIdx = Math.floor(top * 100);
+        // 每个照片额外随机偏移，减少重叠
+        const jitterX = (Math.random() - 0.5) * 2.0;
+        const jitterY = (Math.random() - 0.5) * 2.0;
 
-            const img = document.createElement('img');
-            img.src = PHOTOS[i];
-            img.className = 'gallery-photo';
-            img.style.cssText = `
-              left: ${left - size/2}px;
-              top: ${top - size/2}px;
-              width: ${size}px;
-              height: ${size}px;
-              transform: rotate(${rotation}deg);
-              z-index: ${zIdx};
-            `;
-            img.addEventListener('click', (e) => {
-              e.stopPropagation();
-              openLightbox(PHOTOS[i]);
-            });
+        const left = centerX + (hx * r + jitterX) * scaleX;
+        const top = centerY + (hy * r + jitterY) * scaleY;
 
-            container.appendChild(img);
-          }
+        const size = 40 + Math.random() * 35;   // 更小的尺寸减少重叠
+        const rotation = (Math.random() - 0.5) * 40;
+        const zIdx = i;
+
+        const img = document.createElement('img');
+        img.src = PHOTOS[i];
+        img.className = 'gallery-photo';
+        img.style.cssText = `
+          left: ${left - size/2}px;
+          top: ${top - size/2}px;
+          width: ${size}px;
+          height: ${size}px;
+          transform: rotate(${rotation}deg);
+          z-index: ${zIdx};
+        `;
+        img.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openLightbox(PHOTOS[i]);
         });
-      });
+
+        container.appendChild(img);
+      }
+
+      // 淡入
+      document.querySelector('.gallery-wrapper').classList.add('loaded');
     }
 
     // ========== 灯箱 ==========
