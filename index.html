@@ -580,6 +580,9 @@
   <!-- ==================== 装饰画布（爱心树、飘浮爱心） ==================== -->
   <canvas id="decoration-canvas"></canvas>
 
+  <!-- ==================== 全局返回按钮（始终在 body 层，不受页面切换影响） ==================== -->
+  <button id="global-back-btn" class="gallery-back-btn" style="display:none;">← 返回</button>
+
   <!-- ==================== 第0页：登录 ==================== -->
   <div class="page active" id="login-page">
     <div class="login-card">
@@ -665,7 +668,6 @@
       </p>
       <button class="continue-btn" onclick="showPage('birthday-page')">继 续 →</button>
     </div>
-    <button class="gallery-back-btn" onclick="showPage('quiz-page')">← 返回</button>
   </div>
 
   <!-- ==================== 第5页：生日快乐 + 彩带 ==================== -->
@@ -679,7 +681,6 @@
       </p>
       <button class="next-btn" onclick="showPage('letter-page')">💌 打开信件</button>
     </div>
-    <button class="gallery-back-btn" onclick="showPage('result-c-page')">← 返回</button>
   </div>
 
   <!-- ==================== 照片墙页面 ==================== -->
@@ -687,7 +688,6 @@
     <div class="gallery-wrapper">
       <div class="gallery-heart" id="gallery-heart"></div>
     </div>
-    <button class="gallery-back-btn" onclick="showPage('result-b-page')">← 返回</button>
   </div>
 
   <!-- ==================== 灯箱 ==================== -->
@@ -723,6 +723,13 @@
       'gallery-page': 'bg-love',
     };
 
+    // ========== 全局返回按钮映射 ==========
+    const backTargets = {
+      'result-c-page': 'quiz-page',
+      'birthday-page': 'result-c-page',
+      'gallery-page': 'result-b-page',
+    };
+
     // ========== 页面切换 ==========
     function showPage(pageId) {
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -733,6 +740,15 @@
       document.body.className = '';
       if (pageBackgrounds[pageId]) {
         document.body.classList.add(pageBackgrounds[pageId]);
+      }
+
+      // 全局返回按钮
+      const backBtn = document.getElementById('global-back-btn');
+      if (backTargets[pageId]) {
+        backBtn.style.display = '';
+        backBtn.setAttribute('data-target', backTargets[pageId]);
+      } else {
+        backBtn.style.display = 'none';
       }
 
       // 特殊页面逻辑
@@ -798,6 +814,12 @@
       }
     `;
     document.head.appendChild(shakeStyle);
+
+    // ========== 全局返回按钮点击 ==========
+    document.getElementById('global-back-btn').addEventListener('click', function() {
+      const target = this.getAttribute('data-target');
+      if (target) showPage(target);
+    });
 
     // ========== 选择题逻辑 ==========
     function chooseOption(option) {
