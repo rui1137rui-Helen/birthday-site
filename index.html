@@ -486,8 +486,8 @@
     .gallery-wrapper {
       position: relative;
       z-index: 2;
-      width: 98vw;
-      height: 82vh;
+      width: 100vw;
+      height: 90vh;
       margin: 0 auto;
     }
 
@@ -1199,8 +1199,10 @@
 
       const container = document.getElementById('gallery-heart');
       const loadingEl = document.getElementById('gallery-loading');
+
+      // 占满整个视口
       const cw = window.innerWidth * 0.98;
-      const ch = window.innerHeight * 0.8;
+      const ch = window.innerHeight * 0.88;
 
       if (cw < 200 || ch < 200) {
         galleryBuilt = false;
@@ -1208,14 +1210,13 @@
         return;
       }
 
-      // ---- 1. 决定间距：让116张照片均匀分布 ----
-      const gridStep = Math.round(Math.min(38, Math.max(24, Math.sqrt(cw * ch * 0.4 / PHOTOS.length))));
-      const photoSize = gridStep - 4;
+      // ---- 网格间距和照片尺寸（比之前大，更松散） ----
+      const photoSize = Math.round(Math.min(48, Math.max(36, Math.sqrt(cw * ch * 0.65 / PHOTOS.length))));
+      const gridStep = Math.round(photoSize * 1.35);  // 格距=照片1.35倍，保证大量空白
       const halfG = gridStep / 2;
 
-      // ---- 2. UI canvas 渲染文字 ----
+      // ---- 渲染 "20❤️" 到装饰画布，字号更大填满更多空间 ----
       const offCanvas = document.getElementById('decoration-canvas');
-      // 借用已有的装饰画布（始终在 DOM 中，字体渲染可靠）
       const origW = offCanvas.width;
       const origH = offCanvas.height;
       offCanvas.width = cw;
@@ -1224,41 +1225,42 @@
 
       ctx.clearRect(0, 0, cw, ch);
       ctx.fillStyle = '#000';
-      const fSize = Math.min(cw / 5.5, ch / 1.6);
-      ctx.font = `900 ${fSize * 1.1}px "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif`;
+      const fSize = Math.min(cw / 4.5, ch / 1.4);  // 比之前大很多
+
+      ctx.font = `900 ${fSize * 1.15}px "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('2', cw * 0.18, ch * 0.5);
-      ctx.fillText('0', cw * 0.44, ch * 0.5);
-      ctx.font = `900 ${fSize * 1.3}px "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif`;
-      ctx.fillText('❤️', cw * 0.72, ch * 0.48);
+      ctx.fillText('2', cw * 0.17, ch * 0.5);
+      ctx.fillText('0', cw * 0.43, ch * 0.5);
+      ctx.font = `900 ${fSize * 1.35}px "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif`;
+      ctx.fillText('❤️', cw * 0.72, ch * 0.47);
 
-      // ---- 3. 采样 ----
+      // ---- 网格采样 ----
       const allPts = [];
       for (let y = halfG; y < ch - halfG; y += gridStep) {
         for (let x = halfG; x < cw - halfG; x += gridStep) {
           const a = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data[3];
-          if (a > 60) allPts.push({x,y});
+          if (a > 50) allPts.push({x, y});
         }
       }
 
       // 格子不够则缩小格距
       if (allPts.length < PHOTOS.length) {
         allPts.length = 0;
-        const denser = Math.round(gridStep * 0.6);
-        for (let y = halfG; y < ch - halfG; y += denser) {
-          for (let x = halfG; x < cw - halfG; x += denser) {
+        const tighter = Math.round(photoSize * 1.05);
+        for (let y = halfG; y < ch - halfG; y += tighter) {
+          for (let x = halfG; x < cw - halfG; x += tighter) {
             const a = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data[3];
-            if (a > 40) allPts.push({x,y});
+            if (a > 30) allPts.push({x, y});
           }
         }
       }
 
-      // ---- 4. 恢复装饰画布 ----
+      // 恢复装饰画布
       offCanvas.width = origW;
       offCanvas.height = origH;
 
-      // ---- 5. 洗牌取点 ----
+      // ---- 洗牌取点 ----
       for (let i = allPts.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [allPts[i], allPts[j]] = [allPts[j], allPts[i]];
@@ -1266,34 +1268,30 @@
 
       const renderCount = Math.min(PHOTOS.length, allPts.length);
 
-      // ---- 6. 如果还是没有点，fallback 到纯爱心 ----
+      // ---- 纯爱心fallback ----
       let finalPts;
       if (renderCount >= 10) {
         finalPts = allPts.slice(0, renderCount);
       } else {
-        // 纯爱心 fallback
         finalPts = [];
-        const hScaleX = cw / 34;
-        const hScaleY = ch / 30;
-        const hCX = cw / 2;
-        const hCY = ch / 2;
+        const hscX = cw / 38, hscY = ch / 34, hCX = cw / 2, hCY = ch / 2;
         for (let i = 0; i < PHOTOS.length; i++) {
-          const t = Math.random() * Math.PI * 2;
-          const r = Math.sqrt(Math.random());
-          const hx = 16 * Math.pow(Math.sin(t), 3);
-          const hy = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
-          finalPts.push({ x: hCX + hx * r * hScaleX, y: hCY + hy * r * hScaleY });
+          const t = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random());
+          finalPts.push({
+            x: hCX + (16*Math.pow(Math.sin(t),3)) * r * hscX,
+            y: hCY - (13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t)) * r * hscY
+          });
         }
       }
 
-      // ---- 7. 创建img元素 ----
+      // ---- 创建 img 元素 ----
       const fragment = document.createDocumentFragment();
       const total = finalPts.length;
 
       for (let i = 0; i < total; i++) {
         const p = finalPts[i];
-        const sz = photoSize * (0.85 + Math.random() * 0.3);
-        const rot = (Math.random() - 0.5) * 25;
+        const sz = photoSize * (0.85 + Math.random() * 0.25);
+        const rot = (Math.random() - 0.5) * 20;
         const img = document.createElement('img');
         img.className = 'gallery-photo';
         img.style.cssText = 'left:'+(p.x-sz/2)+'px;top:'+(p.y-sz/2)+'px;width:'+sz+'px;height:'+sz+'px;transform:rotate('+rot+'deg);z-index:'+i+';';
@@ -1315,12 +1313,10 @@
         fragment.appendChild(img);
       }
 
-      // fallback: 没有照片时直接隐藏loading
       if (total === 0 && loadingEl) loadingEl.style.display = 'none';
-
       container.appendChild(fragment);
 
-      // 分批设置src
+      // 分批加载
       let batchIdx = 0;
       const BATCH = 8;
       function loadBatch() {
