@@ -1244,15 +1244,41 @@
         }
       }
 
-      // 格子不够则缩小格距
+      // 采样不够 → 缩小格距重来
+      let activeStep = gridStep;
       if (allPts.length < PHOTOS.length) {
         allPts.length = 0;
-        const tighter = Math.round(photoSize * 1.05);
-        for (let y = halfG; y < ch - halfG; y += tighter) {
-          for (let x = halfG; x < cw - halfG; x += tighter) {
+        activeStep = Math.round(gridStep * 0.7);
+        for (let y = halfG; y < ch - halfG; y += activeStep) {
+          for (let x = halfG; x < cw - halfG; x += activeStep) {
             const a = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data[3];
             if (a > 30) allPts.push({x, y});
           }
+        }
+      }
+
+      // 还不够 → 继续缩
+      if (allPts.length < PHOTOS.length) {
+        allPts.length = 0;
+        activeStep = Math.round(gridStep * 0.5);
+        for (let y = halfG; y < ch - halfG; y += activeStep) {
+          for (let x = halfG; x < cw - halfG; x += activeStep) {
+            const a = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data[3];
+            if (a > 15) allPts.push({x, y});
+          }
+        }
+      }
+
+      // ---- 从边界点生成额外补位（确保全部116张照片都有位置） ----
+      if (allPts.length < PHOTOS.length) {
+        const existing = allPts.length;
+        for (let i = 0; i < PHOTOS.length - existing && allPts.length > 0; i++) {
+          const src = allPts[i % existing];
+          const offset = activeStep * (0.5 + 0.3 * (i % 3));
+          const angle = (i * 137.5) * Math.PI / 180;
+          const nx = Math.max(halfG, Math.min(cw - halfG, src.x + Math.cos(angle) * offset));
+          const ny = Math.max(halfG, Math.min(ch - halfG, src.y + Math.sin(angle) * offset));
+          allPts.push({ x: nx, y: ny });
         }
       }
 
