@@ -505,7 +505,7 @@
       object-fit: cover;
       border: 2px solid rgba(255,255,255,0.7);
       opacity: 0;
-      transition: opacity 0.3s ease, transform 0.25s ease, box-shadow 0.25s ease;
+      transition: opacity 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
       contain: layout style paint;
     }
     .gallery-photo.shown { opacity: 1; }
@@ -1208,35 +1208,92 @@
         return;
       }
 
-      const centerX = cw / 2;
-      const centerY = ch / 2;
-      // 爱心撑满整个区域
-      const scaleX = cw / 40;
-      const scaleY = ch / 36;
+      // ---- 1. 用离屏 canvas 渲染 "20❤️" 形状 ----
+      const offCanvas = document.createElement('canvas');
+      offCanvas.width = cw;
+      offCanvas.height = ch;
+      const ctx = offCanvas.getContext('2d');
+
+      ctx.fillStyle = '#000';
+
+      // 整体参考字号
+      const baseSize = Math.min(cw / 6, ch / 2.2);
+
+      // -- 数字 "2" --
+      ctx.font = `900 ${baseSize * 1.15}px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('2', cw * 0.18, ch * 0.5);
+
+      // -- 数字 "0" --
+      ctx.fillText('0', cw * 0.44, ch * 0.5);
+
+      // -- 爱心符号 --
+      ctx.font = `900 ${baseSize * 1.35}px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif`;
+      // macOS / iOS 上 emoji ❤️ 偏上，所以把 y 调低一点
+      ctx.fillText('❤️', cw * 0.72, ch * 0.48);
+
+      // ---- 2. 采样所有形状内的像素 ----
+      const imageData = ctx.getImageData(0, 0, cw, ch);
+      const pixels = imageData.data;
+      const allPoints = [];
+
+      const step = 2; // 每 2px 采样一次，保证足够密
+      for (let y = 0; y < ch; y += step) {
+        for (let x = 0; x < cw; x += step) {
+          const alpha = pixels[(y * cw + x) * 4 + 3];
+          if (alpha > 100) {
+            allPoints.push({ x, y });
+          }
+        }
+      }
+
+      // ---- 3. 随机打乱后均匀取点 ----
+      for (let i = allPoints.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [allPoints[i], allPoints[j]] = [allPoints[j], allPoints[i]];
+      }
 
       const n = PHOTOS.length;
       const total = n;
+      const pickStep = Math.max(1, Math.floor(allPoints.length / total));
+      const chosen = [];
+      for (let i = 0; i < total && i * pickStep < allPoints.length; i++) {
+        chosen.push(allPoints[i * pickStep]);
+      }
 
-      // 使用 DocumentFragment 一次性插入 DOM，避免 reflow 风暴
+      // ---- 4. 去重去重叠：如果两张照片中心太近，把其中一张微调 ----
+      const MIN_DIST = 20; // 最小中心间距（px）
+      for (let i = 0; i < chosen.length; i++) {
+        for (let j = i + 1; j < chosen.length; j++) {
+          const dx = chosen[i].x - chosen[j].x;
+          const dy = chosen[i].y - chosen[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < MIN_DIST && dist > 0) {
+            const pushX = (dx / dist) * (MIN_DIST - dist) * 0.6;
+            const pushY = (dy / dist) * (MIN_DIST - dist) * 0.6;
+            chosen[i].x += pushX;
+            chosen[i].y += pushY;
+            chosen[j].x -= pushX;
+            chosen[j].y -= pushY;
+          }
+        }
+      }
+
+      // ---- 5. 创建照片元素 ----
       const fragment = document.createDocumentFragment();
 
-      for (let i = 0; i < n; i++) {
-        const t = Math.random() * Math.PI * 2;
-        const r = Math.pow(Math.random(), 0.7);  // 略偏向边缘，不集中在中心
+      for (let i = 0; i < chosen.length; i++) {
+        const pos = chosen[i];
+        // 微弱的随机抖动，让排列看起来自然
+        const jitterX = (Math.random() - 0.5) * 4;
+        const jitterY = (Math.random() - 0.5) * 4;
 
-        const hx = 16 * Math.pow(Math.sin(t), 3);
-        const hy = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
-
-        // 增加随机扩散
-        const jitterX = (Math.random() - 0.5) * 4.0;
-        const jitterY = (Math.random() - 0.5) * 4.0;
-
-        const left = centerX + (hx * r + jitterX) * scaleX;
-        const top = centerY + (hy * r + jitterY) * scaleY;
-
-        const size = 35 + Math.random() * 35;
-        const rotation = (Math.random() - 0.5) * 50;
-        const zIdx = Math.floor(left + top);
+        const left = Math.max(0, pos.x + jitterX);
+        const top = Math.max(0, pos.y + jitterY);
+        const size = 35 + Math.random() * 30;
+        const rotation = (Math.random() - 0.5) * 30;
+        const zIdx = i;
 
         const img = document.createElement('img');
         img.setAttribute('loading', 'lazy');
@@ -1250,21 +1307,18 @@
           transform: rotate(${rotation}deg);
           z-index: ${zIdx};
         `;
-        // 保存原始旋转角度，hover 时不会丢失
-        img.dataset.rotation = rotation;
-        img.dataset.src = PHOTOS[i];
+        img.dataset.src = PHOTOS[i % PHOTOS.length];
 
-        // 图片加载完成后淡入
         img.onload = function() {
           this.classList.add('shown');
           galleryLoaded++;
-          if (galleryLoaded >= total && loadingEl) {
+          if (galleryLoaded >= chosen.length && loadingEl) {
             loadingEl.style.display = 'none';
           }
         };
         img.onerror = function() {
           galleryLoaded++;
-          if (galleryLoaded >= total && loadingEl) {
+          if (galleryLoaded >= chosen.length && loadingEl) {
             loadingEl.style.display = 'none';
           }
         };
@@ -1277,30 +1331,26 @@
         fragment.appendChild(img);
       }
 
-      // 一次性插入所有节点
+      // ---- 6. 插入 DOM 并分批加载 ----
       container.appendChild(fragment);
 
-      // 分批设置 src，避免同时发起 117 个请求
       const imgs = container.querySelectorAll('.gallery-photo');
       let batchIndex = 0;
-      const BATCH_SIZE = 10;
-      const BATCH_DELAY = 30;
+      const BATCH_SIZE = 8;
+      const BATCH_DELAY = 40;
 
       function loadBatch() {
         const start = batchIndex * BATCH_SIZE;
         const end = Math.min(start + BATCH_SIZE, imgs.length);
-
         for (let j = start; j < end; j++) {
           imgs[j].src = imgs[j].dataset.src;
         }
-
         batchIndex++;
         if (batchIndex * BATCH_SIZE < imgs.length) {
           setTimeout(loadBatch, BATCH_DELAY);
         }
       }
 
-      // 先显示前几张，其余分批
       loadBatch();
     }
 
