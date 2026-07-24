@@ -765,13 +765,12 @@
       }
 
       if (pageId === 'gallery-page') {
-        // 清空旧内容并重置
         const gh = document.getElementById('gallery-heart');
         if (gh) gh.innerHTML = '';
         const gw = document.querySelector('.gallery-wrapper');
         if (gw) gw.classList.remove('loaded');
         galleryBuilt = false;
-        requestAnimationFrame(buildGallery);
+        setTimeout(buildGallery, 100);
       }
 
       if (pageId === 'result-a-page') startFloatingHearts('A');
@@ -1186,39 +1185,38 @@
       if (galleryBuilt) return;
 
       const container = document.getElementById('gallery-heart');
-      const cw = container.clientWidth;
-      const ch = container.clientHeight;
 
-      // 容器还没渲染出尺寸，等下一帧再试
-      if (cw === 0 || ch === 0) {
-        requestAnimationFrame(buildGallery);
+      // 直接用视口尺寸，不依赖容器布局（避免 display:none→flex 切换时的时序问题）
+      const cw = Math.min(window.innerWidth * 0.95, 900);
+      const ch = window.innerHeight * 0.78;
+
+      if (cw <= 0 || ch <= 0) {
+        setTimeout(buildGallery, 50);
         return;
       }
 
       galleryBuilt = true;
       const centerX = cw / 2;
       const centerY = ch / 2;
-      const scaleX = cw / 36;   // 更大的分母 = 更分散
-      const scaleY = ch / 32;
-
+      const scaleX = cw / 38;
+      const scaleY = ch / 34;
       const n = PHOTOS.length;
 
       for (let i = 0; i < n; i++) {
         const t = Math.random() * Math.PI * 2;
-        const r = Math.sqrt(Math.random());  // sqrt 让内部均匀
+        const r = Math.sqrt(Math.random());
 
         const hx = 16 * Math.pow(Math.sin(t), 3);
         const hy = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
 
-        // 每个照片额外随机偏移，减少重叠
-        const jitterX = (Math.random() - 0.5) * 2.0;
-        const jitterY = (Math.random() - 0.5) * 2.0;
+        const jitterX = (Math.random() - 0.5) * 2.5;
+        const jitterY = (Math.random() - 0.5) * 2.5;
 
         const left = centerX + (hx * r + jitterX) * scaleX;
         const top = centerY + (hy * r + jitterY) * scaleY;
 
-        const size = 40 + Math.random() * 35;   // 更小的尺寸减少重叠
-        const rotation = (Math.random() - 0.5) * 40;
+        const size = 42 + Math.random() * 38;
+        const rotation = (Math.random() - 0.5) * 45;
         const zIdx = i;
 
         const img = document.createElement('img');
@@ -1232,15 +1230,17 @@
           transform: rotate(${rotation}deg);
           z-index: ${zIdx};
         `;
+        // 加载失败时输出调试信息
+        img.onerror = function() {
+          console.warn('Failed to load:', PHOTOS[i]);
+        };
         img.addEventListener('click', (e) => {
           e.stopPropagation();
           openLightbox(PHOTOS[i]);
         });
-
         container.appendChild(img);
       }
 
-      // 淡入
       document.querySelector('.gallery-wrapper').classList.add('loaded');
     }
 
