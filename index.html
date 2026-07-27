@@ -1255,142 +1255,138 @@
     function buildGallery() {
       if (galleryBuilt) return;
       galleryBuilt = true;
-
       var container = document.getElementById('gallery-heart');
       var loadingEl = document.getElementById('gallery-loading');
-      var cw = window.innerWidth * 0.96;
-      var ch = window.innerHeight * 0.86;
-      if (cw < 200 || ch < 200) { galleryBuilt = false; setTimeout(buildGallery, 100); return; }
+      var w = window.innerWidth * 0.96;
+      var h = window.innerHeight * 0.86;
+      if (w < 200 || h < 200) { galleryBuilt = false; setTimeout(buildGallery, 100); return; }
 
-      var photoSize = Math.round(Math.min(44, Math.max(32, Math.sqrt(cw * ch * 0.4 / PHOTOS.length))));
-      var minDist = photoSize * 1.55;
+      // ======== Step 1: 渲染形状到 canvas ========
+      var cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      cv.style.cssText = 'position:absolute;top:0;left:0;opacity:0;pointer-events:none;';
+      container.appendChild(cv);
+      var c = cv.getContext('2d');
 
-      // 离屏 canvas — 不插入 DOM，纯内存绘制+采样
-      var tmpCanvas = document.createElement('canvas');
-      tmpCanvas.width = cw;
-      tmpCanvas.height = ch;
-      var ctx = tmpCanvas.getContext('2d');
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(0, 0, cw, ch);
-      ctx.fillStyle = ctx.strokeStyle = '#000';
-      ctx.lineCap = ctx.lineJoin = 'round';
+      // 白色底、黑色文字/路径
+      c.fillStyle = '#fff';
+      c.fillRect(0, 0, w, h);
+      c.fillStyle = c.strokeStyle = '#000';
+      c.lineCap = c.lineJoin = 'round';
 
-      var colW = cw * 0.29;
-      var gap = cw * 0.015;
-      var left = (cw - colW * 3 - gap * 2) / 2;
-      var hh = ch * 0.74;
-      var topY = (ch - hh) / 2;
-      var thick = Math.round(colW * 0.32);
+      // 三个形状各占约 31% 宽度
+      var colW = Math.round(w * 0.30);
+      var gap = Math.round((w - colW * 3) / 4);
+      var x1 = gap, x2 = gap * 2 + colW, x3 = gap * 3 + colW * 2;
+      var sy = Math.round(h * 0.06), sh = Math.round(h * 0.82);
 
-      var bx1 = left, bx2 = left + colW + gap, bx3 = left + (colW + gap) * 2;
-      var cx1 = bx1 + colW/2, cx2 = bx2 + colW/2, cx3 = bx3 + colW/2;
-      var cy = topY + hh/2;
+      // 非常粗的字体字号
+      var fs1 = Math.min(colW, sh) * 1.25;
+      c.font = '900 ' + fs1 + 'px "PingFang SC","Microsoft YaHei","Helvetica Neue",sans-serif';
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
 
-      // "2"
-      var wc = colW * 0.82, hc = hh * 0.88, r2 = wc * 0.44;
-      ctx.lineWidth = thick;
-      ctx.beginPath();
-      ctx.moveTo(bx1 + colW*0.09, topY + thick*0.5);
-      ctx.lineTo(bx1 + colW*0.09 + wc - r2, topY + thick*0.5);
-      ctx.arcTo(bx1 + colW*0.09 + wc, topY + thick*0.5, bx1 + colW*0.09 + wc, topY + r2, r2);
-      ctx.lineTo(bx1 + colW*0.09 + wc, topY + hc * 0.54);
-      ctx.lineTo(bx1 + colW*0.09 + thick*0.15, topY + hc - thick*0.5);
-      ctx.lineTo(bx1 + colW*0.09 + wc * 0.78, topY + hc - thick*0.5);
-      ctx.stroke();
+      // === "2" === 字体绘制，fill+stroke 双重加粗
+      c.lineWidth = Math.round(fs1 * 0.12);
+      c.strokeText('2', x1 + colW/2, sy + sh/2);
+      c.fillText('2', x1 + colW/2, sy + sh/2);
 
-      // "0"
-      ctx.beginPath();
-      ctx.ellipse(cx2, cy, (colW*0.68 - thick)/2, (hh*0.92 - thick)/2, 0, 0, Math.PI*2);
-      ctx.stroke();
+      // === "0" ===
+      c.strokeText('0', x2 + colW/2, sy + sh/2);
+      c.fillText('0', x2 + colW/2, sy + sh/2);
 
-      // "❤️"
-      var hs = Math.min(colW * 0.95, hh * 0.92) / 37;
-      ctx.lineWidth = thick * 0.5;
-      ctx.beginPath();
+      // === "❤️" === 路径绘制（不受系统字体影响）
+      var hs = Math.min(colW * 0.95, sh * 0.88) / 36;
+      var hcx = x3 + colW/2, hcy = sy + sh/2 + sh * 0.02;
+      c.lineWidth = Math.round(fs1 * 0.08);
+      c.beginPath();
       for (var t = 0; t <= Math.PI*2; t += 0.01) {
-        var px = cx3 + 16*Math.pow(Math.sin(t),3)*hs;
-        var py = cy - (13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))*hs;
-        t === 0 ? ctx.moveTo(px,py) : ctx.lineTo(px,py);
+        var px = hcx + 16*Math.pow(Math.sin(t),3)*hs;
+        var py = hcy - (13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))*hs;
+        t === 0 ? c.moveTo(px,py) : c.lineTo(px,py);
       }
-      ctx.closePath();
-      ctx.fill();
-      ctx.lineWidth = thick * 0.5;
-      ctx.stroke();
+      c.closePath();
+      c.fill();
+      c.lineWidth = Math.round(fs1 * 0.06);
+      c.stroke();
 
-      // 纯内存采样 — canvas 未插入 DOM 也能 getImageData
-      var imageData = ctx.getImageData(0, 0, cw, ch);
-      var pixels = imageData.data;
-      var allPts = [];
-      for (var y = 2; y < ch - 2; y += 3) {
-        for (var x = 2; x < cw - 2; x += 3) {
-          if (pixels[(y * cw + x) * 4] < 100) allPts.push({x: x, y: y});
-        }
-      }
-
-      // 洗牌
-      for (var i = allPts.length - 1; i > 0; i--) {
-        var j = Math.floor(Math.random() * (i + 1));
-        var tmpPt = allPts[i]; allPts[i] = allPts[j]; allPts[j] = tmpPt;
-      }
-
-      // 贪心选不重叠的点
-      var chosen = [];
-      var md2 = minDist * minDist;
-      for (var i = 0; i < allPts.length && chosen.length < PHOTOS.length; i++) {
-        var p = allPts[i];
-        if (p.x < 8 || p.x > cw-8 || p.y < 8 || p.y > ch-8) continue;
-        var ok = true;
-        for (var j = 0; j < chosen.length; j++) {
-          var dx = p.x - chosen[j].x, dy = p.y - chosen[j].y;
-          if (dx*dx + dy*dy < md2) { ok = false; break; }
-        }
-        if (ok) chosen.push(p);
-      }
-
-      if (chosen.length < PHOTOS.length) {
-        md2 = (minDist*0.55)*(minDist*0.55);
-        for (var i = 0; i < allPts.length && chosen.length < PHOTOS.length; i++) {
-          var p = allPts[i];
-          if (p.x < 3 || p.x > cw-3 || p.y < 3 || p.y > ch-3) continue;
-          var ok = true;
-          for (var j = 0; j < chosen.length; j++) {
-            var dx = p.x - chosen[j].x, dy = p.y - chosen[j].y;
-            if (dx*dx + dy*dy < md2) { ok = false; break; }
+      // ======== Step 2: 等浏览器渲染完成，采样像素 ========
+      requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+          var imgd = c.getImageData(0, 0, w, h);
+          var d = imgd.data;
+          var pts = [];
+          // 每隔 step 采样
+          var step = 3;
+          for (var y = 2; y < h - 2; y += step) {
+            for (var x = 2; x < w - 2; x += step) {
+              if (d[(y * w + x) * 4] < 128) pts.push({x:x, y:y});
+            }
           }
-          if (ok) chosen.push(p);
-        }
-      }
+          // 回收 canvas
+          container.removeChild(cv);
 
-      // fallback
-      if (chosen.length < 10) {
-        chosen = [];
-        for (var i = 0; i < PHOTOS.length; i++) {
-          var tt = Math.random()*Math.PI*2, rr = Math.sqrt(Math.random());
-          chosen.push({ x: cw/2+16*Math.pow(Math.sin(tt),3)*rr*cw/38, y: ch/2-(13*Math.cos(tt)-5*Math.cos(2*tt)-2*Math.cos(3*tt)-Math.cos(4*tt))*rr*ch/34 });
-        }
-      }
+          // ======== Step 3: 贪心选点，保证不重叠 ========
+          var photoSize = Math.round(Math.min(44, Math.max(32, Math.sqrt(w*h*0.35/PHOTOS.length))));
+          var minDist = photoSize * 1.5;
 
-      // 创建 img
-      var fragment = document.createDocumentFragment();
-      var total = chosen.length;
-      for (var i = 0; i < total; i++) {
-        var p = chosen[i];
-        var sz = photoSize * (0.85 + Math.random()*0.25);
-        var rot = (Math.random()-0.5)*20;
-        var img = document.createElement('img');
-        img.className = 'gallery-photo';
-        img.style.cssText = 'left:'+(p.x-sz/2)+'px;top:'+(p.y-sz/2)+'px;width:'+sz+'px;height:'+sz+'px;transform:rotate('+rot+'deg);z-index:'+i+';';
-        img.dataset.src = PHOTOS[i % PHOTOS.length];
-        img.onload = function() { this.classList.add('shown'); galleryLoaded++; if (galleryLoaded>=total&&loadingEl) loadingEl.style.display='none'; };
-        img.onerror = function() { galleryLoaded++; if (galleryLoaded>=total&&loadingEl) loadingEl.style.display='none'; };
-        img.addEventListener('click', function(e) { e.stopPropagation(); openLightbox(this.dataset.src); });
-        fragment.appendChild(img);
-      }
-      if (total===0&&loadingEl) loadingEl.style.display='none';
-      container.appendChild(fragment);
+          // 洗牌
+          for (var i = pts.length-1; i > 0; i--) {
+            var j = Math.floor(Math.random()*(i+1));
+            var ttt = pts[i]; pts[i] = pts[j]; pts[j] = ttt;
+          }
 
-      var batchIdx=0,B=8;
-      (function lb(){ var imgs=container.querySelectorAll('.gallery-photo'); var s=batchIdx*B,e=Math.min(s+B,imgs.length); for(var j=s;j<e;j++)imgs[j].src=imgs[j].dataset.src; batchIdx++; if(batchIdx*B<imgs.length)setTimeout(lb,40); })();
+          var chosen = [];
+          var md2 = minDist * minDist;
+          for (var i = 0; i < pts.length && chosen.length < PHOTOS.length; i++) {
+            var p = pts[i];
+            if (p.x<8||p.x>w-8||p.y<8||p.y>h-8) continue;
+            var ok = true;
+            for (var j = 0; j < chosen.length; j++) {
+              var dx = p.x-chosen[j].x, dy = p.y-chosen[j].y;
+              if (dx*dx+dy*dy < md2) { ok=false; break; }
+            }
+            if (ok) chosen.push(p);
+          }
+
+          // 不够 → 放松间距
+          if (chosen.length < PHOTOS.length) {
+            md2 = (minDist*0.55)*(minDist*0.55);
+            for (var i = 0; i < pts.length && chosen.length < PHOTOS.length; i++) {
+              var p = pts[i];
+              if (p.x<4||p.x>w-4||p.y<4||p.y>h-4) continue;
+              var ok = true;
+              for (var j = 0; j < chosen.length; j++) {
+                var dx = p.x-chosen[j].x, dy = p.y-chosen[j].y;
+                if (dx*dx+dy*dy < md2) { ok=false; break; }
+              }
+              if (ok) chosen.push(p);
+            }
+          }
+
+          // ======== Step 4: 创建照片 ========
+          var frag = document.createDocumentFragment();
+          var total = chosen.length;
+          for (var i = 0; i < total; i++) {
+            var p = chosen[i];
+            var sz = photoSize * (0.85 + Math.random()*0.25);
+            var rot = (Math.random()-0.5)*20;
+            var img = document.createElement('img');
+            img.className = 'gallery-photo';
+            img.style.cssText = 'left:'+(p.x-sz/2)+'px;top:'+(p.y-sz/2)+'px;width:'+sz+'px;height:'+sz+'px;transform:rotate('+rot+'deg);z-index:'+i+';';
+            img.dataset.src = PHOTOS[i % PHOTOS.length];
+            img.onload = function() { this.classList.add('shown'); galleryLoaded++; if (galleryLoaded>=total&&loadingEl) loadingEl.style.display='none'; };
+            img.onerror = function() { galleryLoaded++; if (galleryLoaded>=total&&loadingEl) loadingEl.style.display='none'; };
+            img.addEventListener('click', function(e) { e.stopPropagation(); openLightbox(this.dataset.src); });
+            frag.appendChild(img);
+          }
+          if (total===0&&loadingEl) loadingEl.style.display='none';
+          container.appendChild(frag);
+
+          var bi=0,BS=8;
+          (function lb(){ var imgs=container.querySelectorAll('.gallery-photo'); var s=bi*BS,e=Math.min(s+BS,imgs.length); for(var j=s;j<e;j++)imgs[j].src=imgs[j].dataset.src; bi++; if(bi*BS<imgs.length)setTimeout(lb,40); })();
+        });
+      });
     }
 
     // ========== 灯箱 ==========
