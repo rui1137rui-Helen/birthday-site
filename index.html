@@ -1252,6 +1252,24 @@
     let galleryBuilt = false;
     let galleryLoaded = 0;
 
+    // 预加载照片到浏览器缓存（后台静默加载）
+    function preloadPhotos() {
+      var loaded = 0;
+      for (var i = 0; i < PHOTOS.length; i++) {
+        var link = document.createElement('link');
+        link.rel = 'prefetch';
+        link.href = PHOTOS[i];
+        link.as = 'image';
+        document.head.appendChild(link);
+        // 同时用 Image 对象预加载
+        var pre = new Image();
+        pre.src = PHOTOS[i];
+        pre.onload = function() { loaded++; };
+        pre.onerror = function() { loaded++; };
+      }
+    }
+    preloadPhotos();
+
     function buildGallery() {
       if (galleryBuilt) return;
       galleryBuilt = true;
