@@ -1273,64 +1273,65 @@
       const gridStep = Math.round(photoSize * 1.35);
       const halfG = gridStep / 2;
 
-      // ---- 在装饰画布上用几何图形绘制 "20❤️"（不用字体，保证每个部分都实心完整） ----
-      const offCanvas = document.getElementById('decoration-canvas');
-      const origW = offCanvas.width;
-      const origH = offCanvas.height;
-      offCanvas.width = cw;
-      offCanvas.height = ch;
-      const ctx = offCanvas.getContext('2d');
-
-      ctx.clearRect(0, 0, cw, ch);
+      // ---- 独立离屏 canvas：字体画 "2""0" + 路径画 "❤️" ----
+      const off = document.createElement('canvas');
+      off.width = cw;
+      off.height = ch;
+      const ctx = off.getContext('2d');
       ctx.fillStyle = '#000';
 
-      // 三个形状的参考框
-      const charW = cw * 0.23;
-      const charH = ch * 0.75;
-      const topY = (ch - charH) / 2;
+      const fSize = Math.min(cw / 3.2, ch / 1.25);
+      const yMid = ch * 0.47;
 
-      // "2"
-      drawDigit2(ctx, cw * 0.05, topY, charW, charH);
-      // "0"
-      drawDigit0(ctx, cw * 0.305, topY, charW, charH);
-      // "❤️"
-      const xh = cw * 0.57, yh = topY, wh = charW * 0.9, hh = charH;
-      drawHeartShape(ctx, xh + wh/2, yh + hh/2, wh * 0.42);
+      // "2" 和 "0" 用字体（超大粗体，笔画厚实）
+      ctx.font = `900 ${fSize}px "PingFang SC","Microsoft YaHei","Helvetica Neue",sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('2', cw * 0.18, yMid);
+      ctx.fillText('0', cw * 0.44, yMid);
+
+      // "❤️" 用 canvas 路径（参数方程，可靠且精确）
+      const hx = cw * 0.72, hy = ch * 0.50, hscale = Math.min(cw, ch) / 38;
+      ctx.beginPath();
+      for (let t = 0; t <= Math.PI * 2; t += 0.015) {
+        const px = hx + 16 * Math.pow(Math.sin(t), 3) * hscale;
+        const py = hy - (13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t)) * hscale;
+        if (t === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
 
       // ---- 网格采样 ----
       const allPts = [];
       for (let y = halfG; y < ch - halfG; y += gridStep) {
         for (let x = halfG; x < cw - halfG; x += gridStep) {
           const a = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data[3];
-          if (a > 80) allPts.push({x, y});
+          if (a > 30) allPts.push({x, y});
         }
       }
 
-      // 不够 → 缩格距
+      // 不够 → 缩小格距
       if (allPts.length < PHOTOS.length) {
         allPts.length = 0;
-        const denser = Math.round(gridStep * 0.6);
-        for (let y = halfG; y < ch - halfG; y += denser) {
-          for (let x = halfG; x < cw - halfG; x += denser) {
-            const a = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data[3];
-            if (a > 40) allPts.push({x, y});
-          }
-        }
-      }
-
-      if (allPts.length < PHOTOS.length) {
-        allPts.length = 0;
-        const densest = Math.round(gridStep * 0.42);
-        for (let y = halfG; y < ch - halfG; y += densest) {
-          for (let x = halfG; x < cw - halfG; x += densest) {
+        const ds = Math.round(gridStep * 0.65);
+        for (let y = halfG; y < ch - halfG; y += ds) {
+          for (let x = halfG; x < cw - halfG; x += ds) {
             const a = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data[3];
             if (a > 15) allPts.push({x, y});
           }
         }
       }
 
-      offCanvas.width = origW;
-      offCanvas.height = origH;
+      if (allPts.length < PHOTOS.length) {
+        allPts.length = 0;
+        const ds2 = Math.round(gridStep * 0.45);
+        for (let y = halfG; y < ch - halfG; y += ds2) {
+          for (let x = halfG; x < cw - halfG; x += ds2) {
+            const a = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data[3];
+            if (a > 5) allPts.push({x, y});
+          }
+        }
+      }
 
       // ---- 洗牌 ----
       for (let i = allPts.length - 1; i > 0; i--) {
@@ -1399,51 +1400,6 @@
         if (batchIdx * BATCH < imgs.length) setTimeout(loadBatch, 40);
       }
       loadBatch();
-    }
-
-    // ========== 几何绘图 - "2", "0", "❤️" 实心形状 ==========
-
-    function drawDigit2(ctx, x, y, w, h) {
-      const t = h * 0.14;
-      const r = w * 0.45;
-      ctx.beginPath();
-      // 外轮廓
-      ctx.moveTo(x + t, y);
-      ctx.lineTo(x + w - r, y);
-      ctx.arcTo(x + w, y, x + w, y + r, r);
-      ctx.lineTo(x + w, y + h * 0.55);
-      ctx.lineTo(x + t * 0.8, y + h);
-      ctx.lineTo(x + w * 0.95, y + h);
-      // 底部内收
-      ctx.lineTo(x + w * 0.95, y + h - t * 0.85);
-      ctx.lineTo(x + t * 2.6, y + h - t * 0.5);
-      // 沿斜线内侧回
-      ctx.lineTo(x + w - t, y + h * 0.55);
-      ctx.lineTo(x + w - t, y + r);
-      ctx.arcTo(x + w - t, y + t, x + w - r - t, y + t, r - t);
-      ctx.lineTo(x + t, y + t);
-      ctx.closePath();
-      ctx.fill();
-    }
-
-    function drawDigit0(ctx, x, y, w, h) {
-      const inset = h * 0.14;
-      ctx.beginPath();
-      ctx.ellipse(x + w/2, y + h/2, w/2, h/2, 0, 0, Math.PI * 2);
-      ctx.ellipse(x + w/2, y + h/2, w/2 - inset, h/2 - inset, 0, 0, Math.PI * 2);
-      ctx.fill('evenodd');
-    }
-
-    function drawHeartShape(ctx, cx, cy, scale) {
-      ctx.beginPath();
-      for (let t = 0; t <= Math.PI * 2; t += 0.02) {
-        const hx = cx + 16 * Math.pow(Math.sin(t), 3) * scale;
-        const hy = cy - (13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t)) * scale;
-        if (t === 0) ctx.moveTo(hx, hy);
-        else ctx.lineTo(hx, hy);
-      }
-      ctx.closePath();
-      ctx.fill();
     }
 
     // ========== 灯箱 ==========
