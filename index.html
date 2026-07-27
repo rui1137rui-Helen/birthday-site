@@ -1275,17 +1275,24 @@
       galleryBuilt = true;
       var C = document.getElementById('gallery-heart');
       var L = document.getElementById('gallery-loading');
-      var W = window.innerWidth * 0.96, H = window.innerHeight * 0.88;
-      if (W < 200 || H < 200) { galleryBuilt = false; setTimeout(buildGallery, 100); return; }
+      var viewW = window.innerWidth * 0.96, viewH = window.innerHeight * 0.88;
+      if (viewW < 200 || viewH < 200) { galleryBuilt = false; setTimeout(buildGallery, 100); return; }
 
-      var pSize = Math.round(Math.min(44, Math.max(32, Math.sqrt(W*H*0.4/PHOTOS.length))));
-      var minDist = pSize * 1.55;
-      var thin = pSize * 0.7; // "2"和"0" 笔画宽度
+      // 固定逻辑坐标 1200×800，等比缩放到实际窗口 — 保证任何屏幕形状一致
+      var FW = 1200, FH = 800;
+      var scale = Math.min(viewW / FW, viewH / FH);
+      var W = Math.round(FW * scale), H = Math.round(FH * scale);
+      var offX = Math.round((viewW - W) / 2), offY = Math.round((viewH - H) / 2);
 
-      // 三列 — 间距加大防止跨形状重叠
-      var colW = W * 0.30, gap = W * 0.025;
-      var totalW = colW*3 + gap*2, left = (W-totalW)/2;
-      var colH = H * 0.80, top = (H-colH)/2;
+      // 照片逻辑尺寸（在 FW×FH 坐标下固定，保证任何屏幕都放下所有照片）
+      var pSizeLog = 36;
+      var minDist = pSizeLog * 1.55;
+      var thin = pSizeLog * 0.7;
+
+      // 三列 — 在固定 FW×FH 坐标下计算
+      var colW = FW * 0.30, gap = FW * 0.025;
+      var totalW = colW*3 + gap*2, left = (FW-totalW)/2;
+      var colH = FH * 0.80, top = (FH-colH)/2;
 
       var cx1 = left + colW/2, cx2 = left + colW + gap + colW/2, cx3 = left + (colW+gap)*2 + colW/2;
       var cy = top + colH/2;
@@ -1305,7 +1312,7 @@
           var f=i/n;
           var x=sx+dx*f+(Math.random()-0.5)*thin*0.3;
           var y=sy+dy*f+(Math.random()-0.5)*thin*0.3;
-          if(x>4&&x<W-4&&y>4&&y<H-4) candidates.push({x:x,y:y});
+          if(x>4&&x<FW-4&&y>4&&y<FH-4) candidates.push({x:x,y:y});
         }
       }
 
@@ -1319,7 +1326,7 @@
         var ang = -Math.PI/2 + i/120*(Math.PI/2);
         var x = aCX+Math.cos(ang)*r2+(Math.random()-0.5)*thin*0.3;
         var y = aCY+Math.sin(ang)*r2+(Math.random()-0.5)*thin*0.3;
-        if(x>4&&x<W-4&&y>4&&y<H-4) candidates.push({x:x,y:y});
+        if(x>4&&x<FW-4&&y>4&&y<FH-4) candidates.push({x:x,y:y});
       }
 
       // ===== "0" — 均匀角度采样 =====
@@ -1329,7 +1336,7 @@
         var rr = sh2*0.44+sh2*0.04*Math.sin(i*13);
         var x=cx2+Math.cos(ang)*r+(Math.random()-0.5)*thin*0.3;
         var y=cy+Math.sin(ang)*rr+(Math.random()-0.5)*thin*0.3;
-        if(x>4&&x<W-4&&y>4&&y<H-4) candidates.push({x:x,y:y});
+        if(x>4&&x<FW-4&&y>4&&y<FH-4) candidates.push({x:x,y:y});
       }
       // 额外环状随机点确保饱满
       for (var i=0;i<300;i++) {
@@ -1337,7 +1344,7 @@
         var r=sw2*0.32+Math.random()*sw2*0.10;
         var rr=sh2*0.42+Math.random()*sh2*0.06;
         var x=cx2+Math.cos(ang)*r,y=cy+Math.sin(ang)*rr;
-        if(x>4&&x<W-4&&y>4&&y<H-4) candidates.push({x:x,y:y});
+        if(x>4&&x<FW-4&&y>4&&y<FH-4) candidates.push({x:x,y:y});
       }
 
       // ===== "❤️" — 加大爱心，最多候选点 =====
@@ -1346,7 +1353,7 @@
         var t_=Math.random()*Math.PI*2, r_=Math.pow(Math.random(),0.5);
         var x=cx3+16*Math.pow(Math.sin(t_),3)*hs*r_;
         var y=cy-(13*Math.cos(t_)-5*Math.cos(2*t_)-2*Math.cos(3*t_)-Math.cos(4*t_))*hs*r_;
-        if(x>4&&x<W-4&&y>4&&y<H-4) candidates.push({x:x,y:y});
+        if(x>4&&x<FW-4&&y>4&&y<FH-4) candidates.push({x:x,y:y});
       }
 
       // ===== 贪心选点 =====
@@ -1354,17 +1361,23 @@
 
       var chosen=[], md2=minDist*minDist;
       for (var i=0;i<candidates.length&&chosen.length<PHOTOS.length;i++){
-        var p=candidates[i]; if(p.x<8||p.x>W-8||p.y<8||p.y>H-8)continue;
+        var p=candidates[i]; if(p.x<8||p.x>FW-8||p.y<8||p.y>FH-8)continue;
         var ok=true; for(var j=0;j<chosen.length;j++){var dx=p.x-chosen[j].x,dy=p.y-chosen[j].y;if(dx*dx+dy*dy<md2){ok=false;break;}}
         if(ok)chosen.push(p);
       }
-      if(chosen.length<PHOTOS.length){md2=(minDist*0.5)*(minDist*0.5);for(var i=0;i<candidates.length&&chosen.length<PHOTOS.length;i++){var p=candidates[i];if(p.x<3||p.x>W-3||p.y<3||p.y>H-3)continue;var ok=true;for(var j=0;j<chosen.length;j++){var dx=p.x-chosen[j].x,dy=p.y-chosen[j].y;if(dx*dx+dy*dy<md2){ok=false;break;}}if(ok)chosen.push(p);}}
+      if(chosen.length<PHOTOS.length){md2=(minDist*0.5)*(minDist*0.5);for(var i=0;i<candidates.length&&chosen.length<PHOTOS.length;i++){var p=candidates[i];if(p.x<3||p.x>FW-3||p.y<3||p.y>FH-3)continue;var ok=true;for(var j=0;j<chosen.length;j++){var dx=p.x-chosen[j].x,dy=p.y-chosen[j].y;if(dx*dx+dy*dy<md2){ok=false;break;}}if(ok)chosen.push(p);}}
 
-      if(chosen.length<10){chosen=[];for(var i=0;i<PHOTOS.length;i++){var tt=Math.random()*Math.PI*2,rr=Math.sqrt(Math.random());chosen.push({x:W/2+16*Math.pow(Math.sin(tt),3)*rr*W/36,y:H/2-(13*Math.cos(tt)-5*Math.cos(2*tt)-2*Math.cos(3*tt)-Math.cos(4*tt))*rr*H/34});}}
+      if(chosen.length<10){chosen=[];for(var i=0;i<PHOTOS.length;i++){var tt=Math.random()*Math.PI*2,rr=Math.sqrt(Math.random());chosen.push({x:FW/2+16*Math.pow(Math.sin(tt),3)*rr*FW/36,y:FH/2-(13*Math.cos(tt)-5*Math.cos(2*tt)-2*Math.cos(3*tt)-Math.cos(4*tt))*rr*FH/34});}}
+
+      // ===== 缩放到实际像素 ====
+      for (var i=0;i<chosen.length;i++) {
+        chosen[i].x = Math.round(chosen[i].x * scale + offX);
+        chosen[i].y = Math.round(chosen[i].y * scale + offY);
+      }
 
       // ===== 放照片 =====
       var frag=document.createDocumentFragment(),total=chosen.length;
-      for(var i=0;i<total;i++){var p=chosen[i],sz=pSize*(0.85+Math.random()*0.25),rot=(Math.random()-0.5)*20;var img=document.createElement('img');img.className='gallery-photo';img.style.cssText='left:'+(p.x-sz/2)+'px;top:'+(p.y-sz/2)+'px;width:'+sz+'px;height:'+sz+'px;transform:rotate('+rot+'deg);z-index:'+i+';';img.dataset.src=PHOTOS[i%PHOTOS.length];img.addEventListener('click',function(e){e.stopPropagation();openLightbox(this.dataset.src);});frag.appendChild(img);}
+      for(var i=0;i<total;i++){var p=chosen[i],sz=pSizeLog*scale*(0.85+Math.random()*0.25),rot=(Math.random()-0.5)*20;var img=document.createElement('img');img.className='gallery-photo';img.style.cssText='left:'+(p.x-sz/2)+'px;top:'+(p.y-sz/2)+'px;width:'+sz+'px;height:'+sz+'px;transform:rotate('+rot+'deg);z-index:'+i+';';img.dataset.src=PHOTOS[i%PHOTOS.length];img.addEventListener('click',function(e){e.stopPropagation();openLightbox(this.dataset.src);});frag.appendChild(img);}
       if(total===0&&L)L.style.display='none';C.appendChild(frag);
       // 串行分批加载：每批4张，等上一批全部完成再发下一批
       var bi=0,BS=4,allImgs=C.querySelectorAll('.gallery-photo'),totalImgs=allImgs.length;
