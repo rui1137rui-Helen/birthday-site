@@ -1259,8 +1259,8 @@
       const loadingEl = document.getElementById('gallery-loading');
 
       // 占满整个视口
-      const cw = window.innerWidth * 0.98;
-      const ch = window.innerHeight * 0.88;
+      const cw = window.innerWidth * 0.99;
+      const ch = window.innerHeight * 0.93;
 
       if (cw < 200 || ch < 200) {
         galleryBuilt = false;
@@ -1269,8 +1269,8 @@
       }
 
       // ---- 照片尺寸和间距 ----
-      const photoSize = Math.round(Math.min(48, Math.max(36, Math.sqrt(cw * ch * 0.65 / PHOTOS.length))));
-      const gridStep = Math.round(photoSize * 1.45);
+      const photoSize = Math.round(Math.min(46, Math.max(34, Math.sqrt(cw * ch * 0.55 / PHOTOS.length))));
+      const gridStep = Math.round(photoSize * 1.55);  // 更大间距
       const halfG = gridStep / 2;
 
       // ---- 独立离屏 canvas：字体画 "2""0" + 路径画 "❤️" ----
@@ -1280,18 +1280,25 @@
       const ctx = off.getContext('2d');
       ctx.fillStyle = '#000';
 
-      const fSize = Math.min(cw / 5, ch / 1.6);
+      const fSize = Math.min(cw / 3.6, ch / 1.35);
       const yMid = ch * 0.48;
 
-      // "2"、"0" 用字体
+      // 字体渲染 + 描边加粗，确保笔画完整
       ctx.font = `900 ${fSize}px "PingFang SC","Microsoft YaHei","Helvetica Neue",sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('2', cw * 0.15, yMid);
-      ctx.fillText('0', cw * 0.41, yMid);
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = Math.round(fSize * 0.06);
+      ctx.lineJoin = 'round';
 
-      // "❤️" 用 canvas 路径，尺寸和数字匹配
-      const hx = cw * 0.70, hy = ch * 0.48, hscale = fSize / 18;
+      ctx.strokeText('2', cw * 0.13, yMid);
+      ctx.fillText('2', cw * 0.13, yMid);
+
+      ctx.strokeText('0', cw * 0.39, yMid);
+      ctx.fillText('0', cw * 0.39, yMid);
+
+      // "❤️" 路径，稍大一点让照片不那么挤
+      const hx = cw * 0.67, hy = ch * 0.48, hscale = fSize / 17;
       ctx.beginPath();
       for (let t = 0; t <= Math.PI * 2; t += 0.015) {
         const px = hx + 16 * Math.pow(Math.sin(t), 3) * hscale;
@@ -1300,6 +1307,7 @@
       }
       ctx.closePath();
       ctx.fill();
+      ctx.stroke();
 
       // ---- 网格采样 ----
       const allPts = [];
