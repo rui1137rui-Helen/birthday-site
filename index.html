@@ -1252,37 +1252,6 @@
     let galleryBuilt = false;
     let galleryLoaded = 0;
 
-    // ========== 几何判断函数 ==========
-    function inside2(x, y, cx, cy, w, h) {
-      const t = w * 0.20, r = w * 0.46, tt = t / 2;
-      const dx = x - cx, dy = y - cy;
-      const hw = w / 2, hh = h / 2;
-      // 顶部横条
-      if (Math.abs(dy + hh) < tt && dx > -hw && dx < hw - r) return true;
-      // 右上弧
-      const acx = hw - r, acy = -hh + r;
-      const adx = dx - acx, ady = dy - acy;
-      const ad = Math.sqrt(adx*adx + ady*ady);
-      if (ad > r - tt && ad < r + tt && adx > -tt && ady < tt) return true;
-      // 斜线
-      const sx = hw, sy = -hh + r, ex = -hw, ey = hh;
-      const ldx = ex - sx, ldy = ey - sy, len = Math.sqrt(ldx*ldx+ldy*ldy);
-      const ux = ldx/len, uy = ldy/len;
-      const proj = (dx-sx)*ux + (dy-sy)*uy;
-      if (proj > 0 && proj < len && Math.abs((dx-sx)*uy - (dy-sy)*ux) < tt) return true;
-      // 底部横条
-      if (Math.abs(dy - hh) < tt && dx > -hw && dx < hw) return true;
-      return false;
-    }
-
-    function inside0(x, y, cx, cy, w, h) {
-      const dx = x - cx, dy = y - cy;
-      const rx = w / 2, ry = h / 2;
-      if (rx <= 0 || ry <= 0) return false;
-      const d = Math.sqrt((dx*dx)/(rx*rx) + (dy*dy)/(ry*ry));
-      return d > 0.80 && d < 1.18;
-    }
-
     function buildGallery() {
       if (galleryBuilt) return;
       galleryBuilt = true;
@@ -1303,46 +1272,57 @@
       const gridStep = Math.round(photoSize * 1.5);
       const halfG = gridStep / 2;
 
-      // ---- 形状区域 ----
-      const totalW = cw * 0.88, charW = totalW / 3.1, gap = charW * 0.08;
-      const startX = (cw - totalW) / 2;
-      const shapeH = ch * 0.78, sy = (ch - shapeH) / 2;
-
-      // "2"
-      const cx2 = startX + charW/2, cy2 = sy + shapeH/2;
-      const w2 = charW*0.85, h2 = shapeH*0.9;
-
-      // "0"
-      const cx0 = startX + charW + gap + charW/2, cy0 = sy + shapeH/2;
-      const w0 = charW*0.8, h0 = shapeH*0.9;
-
-      // "❤️" — 画到离屏 canvas 上然后采样
+      // ---- 三个形状都画在离屏 canvas 上用粗线宽，然后采样 alpha ----
       const off = document.createElement('canvas');
       off.width = cw; off.height = ch;
       const ctx = off.getContext('2d');
-      ctx.fillStyle = '#000';
-      const hcx = startX + (charW+gap)*2 + charW/2, hcy = sy + shapeH/2;
+      ctx.fillStyle = ctx.strokeStyle = '#000';
+      ctx.lineCap = ctx.lineJoin = 'round';
+
+      const totalW = cw * 0.88, charW = totalW / 3.1, gap = charW * 0.08;
+      const startX = (cw - totalW) / 2;
+      const shapeH = ch * 0.78, sy = (ch - shapeH) / 2;
+      const thick = charW * 0.19; // 统一粗线
+
+      // ---- "2": 粗线画路径 ----
+      const x2 = startX, y2 = sy, wc = charW*0.85, hc = shapeH*0.9;
+      const r2 = wc * 0.46;
+      ctx.lineWidth = thick;
+      ctx.beginPath();
+      ctx.moveTo(x2 + thick, y2 + thick);
+      ctx.lineTo(x2 + wc - r2, y2 + thick);
+      ctx.arcTo(x2 + wc, y2 + thick, x2 + wc, y2 + r2, r2);
+      ctx.lineTo(x2 + wc, y2 + hc * 0.55);
+      ctx.lineTo(x2 + thick * 0.5, y2 + hc - thick);
+      ctx.stroke();
+
+      // ---- "0": 粗线椭圆 ----
+      const x0 = startX + charW + gap, y0 = sy;
+      ctx.beginPath();
+      ctx.ellipse(x0 + wc/2, y0 + hc/2, wc/2 - thick/2, hc/2 - thick/2, 0, 0, Math.PI*2);
+      ctx.stroke();
+
+      // ---- "❤️": 填充路径 + 粗线描边 ----
+      const xh = startX + (charW+gap)*2 + charW/2, yh = sy + hc/2;
       const hs = Math.min(charW, shapeH) / 36;
+      ctx.lineWidth = thick * 0.7;
       ctx.beginPath();
       for (let t = 0; t <= Math.PI*2; t += 0.01) {
-        const px = hcx + 16*Math.pow(Math.sin(t),3)*hs;
-        const py = hcy - (13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))*hs;
+        const px = xh + 16*Math.pow(Math.sin(t),3)*hs;
+        const py = yh - (13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))*hs;
         if (t===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
       }
       ctx.closePath();
       ctx.fill();
+      ctx.stroke();
 
       // ---- 采样 ----
       const allPts = [];
       function sample(step, minAlpha) {
         for (let y = halfG; y < ch - halfG; y += step) {
           for (let x = halfG; x < cw - halfG; x += step) {
-            let hit = inside2(x,y,cx2,cy2,w2,h2) || inside0(x,y,cx0,cy0,w0,h0);
-            if (!hit) {
-              const a = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data[3];
-              hit = a > minAlpha;
-            }
-            if (hit) allPts.push({x,y});
+            const a = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data[3];
+            if (a > minAlpha) allPts.push({x, y});
           }
         }
       }
