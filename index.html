@@ -688,7 +688,7 @@
     <div class="congrats-content">
       <div class="sparkles">✨🎉✨</div>
       <h1>恭喜！！！</h1>
-      <p style="color:rgba(255,255,255,0.85); font-size:1.1rem; margin-top:8px;">
+      <p style="color:#4a4a4a; font-size:1.1rem; margin-top:8px;">
         你找到了正确的入口～
       </p>
       <button class="continue-btn" onclick="showPage('birthday-page')">继 续 →</button>
@@ -775,7 +775,7 @@
         backBtn.style.display = '';
         backBtn.setAttribute('data-target', backTargets[pageId]);
         // 恭喜页面用深色按钮
-        if (pageId === 'result-c-page') {
+        if (pageId === 'result-c-page' || pageId === 'gallery-page') {
           backBtn.classList.add('dark');
         } else {
           backBtn.classList.remove('dark');
