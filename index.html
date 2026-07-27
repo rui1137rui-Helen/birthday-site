@@ -1279,12 +1279,12 @@
       ctx.fillStyle = ctx.strokeStyle = '#000';
       ctx.lineCap = ctx.lineJoin = 'round';
 
-      const totalW = cw * 0.88, charW = totalW / 3.1, gap = charW * 0.08;
+      const totalW = cw * 0.92, charW = totalW / 3.1, gap = charW * 0.06;
       const startX = (cw - totalW) / 2;
-      const shapeH = ch * 0.78, sy = (ch - shapeH) / 2;
-      const thick = charW * 0.19; // 统一粗线
+      const shapeH = ch * 0.84, sy = (ch - shapeH) / 2;
+      const thick = charW * 0.24; // 更粗的线，更多采样点
 
-      // ---- "2": 粗线画路径 ----
+      // ---- "2": 粗线路径（含底部横条） ----
       const x2 = startX, y2 = sy, wc = charW*0.85, hc = shapeH*0.9;
       const r2 = wc * 0.46;
       ctx.lineWidth = thick;
@@ -1294,18 +1294,20 @@
       ctx.arcTo(x2 + wc, y2 + thick, x2 + wc, y2 + r2, r2);
       ctx.lineTo(x2 + wc, y2 + hc * 0.55);
       ctx.lineTo(x2 + thick * 0.5, y2 + hc - thick);
+      ctx.lineTo(x2 + wc * 0.75, y2 + hc - thick);  // 底部横条
       ctx.stroke();
 
-      // ---- "0": 粗线椭圆 ----
+      // ---- "0": 粗线椭圆（略窄于2，比例更自然） ----
       const x0 = startX + charW + gap, y0 = sy;
+      const w0 = hc * 0.65; // 宽度基于高度，接近圆形
       ctx.beginPath();
-      ctx.ellipse(x0 + wc/2, y0 + hc/2, wc/2 - thick/2, hc/2 - thick/2, 0, 0, Math.PI*2);
+      ctx.ellipse(x0 + wc/2, y0 + hc/2, w0/2 - thick/2, hc/2 - thick/2, 0, 0, Math.PI*2);
       ctx.stroke();
 
       // ---- "❤️": 填充路径 + 粗线描边 ----
       const xh = startX + (charW+gap)*2 + charW/2, yh = sy + hc/2;
       const hs = Math.min(charW, shapeH) / 36;
-      ctx.lineWidth = thick * 0.7;
+      ctx.lineWidth = thick * 0.55;
       ctx.beginPath();
       for (let t = 0; t <= Math.PI*2; t += 0.01) {
         const px = xh + 16*Math.pow(Math.sin(t),3)*hs;
