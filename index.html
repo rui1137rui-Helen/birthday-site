@@ -786,17 +786,16 @@
 
       // 特殊页面逻辑
       if (pageId === 'login-page') {
-        // 重置登录卡片的绿色成功效果
         const card = document.querySelector('.login-card');
         if (card) {
           card.style.boxShadow = '';
           card.style.border = '';
-          card.querySelectorAll('input').forEach(inp => {
-            inp.style.borderColor = '';
-            inp.style.background = '';
-            inp.style.boxShadow = '';
-          });
         }
+        // 清空输入框并重置样式
+        const uname = document.getElementById('username');
+        const pwd = document.getElementById('password');
+        if (uname) { uname.value = ''; setInputStyle(uname, false); }
+        if (pwd) { pwd.value = ''; setInputStyle(pwd, false); }
       }
 
       if (pageId === 'birthday-page') startConfetti();
@@ -834,13 +833,7 @@
         const card = document.querySelector('.login-card');
         card.style.boxShadow = '0 0 40px rgba(72,199,142,0.6), 0 20px 60px rgba(0,0,0,0.1)';
         card.style.border = '2px solid #48c78e';
-        const inputs = card.querySelectorAll('input');
-        inputs.forEach(inp => {
-          inp.style.borderColor = '#48c78e';
-          inp.style.background = '#f0faf5';
-          inp.style.boxShadow = '0 0 0 4px rgba(72,199,142,0.1)';
-        });
-        setTimeout(() => showPage('quiz-page'), 500);
+        setTimeout(() => showPage('quiz-page'), 400);
       } else {
         errorMsg.classList.add('show');
         const card = document.querySelector('.login-card');
@@ -856,6 +849,29 @@
     });
     document.getElementById('username').addEventListener('keydown', function(e) {
       if (e.key === 'Enter') document.getElementById('password').focus();
+    });
+
+    // ========== 实时输入验证：每个字段单独变绿 ==========
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+
+    function setInputStyle(inp, valid) {
+      if (valid) {
+        inp.style.borderColor = '#48c78e';
+        inp.style.background = '#f0faf5';
+        inp.style.boxShadow = '0 0 0 4px rgba(72,199,142,0.1)';
+      } else {
+        inp.style.borderColor = '';
+        inp.style.background = '';
+        inp.style.boxShadow = '';
+      }
+    }
+
+    usernameInput.addEventListener('input', function() {
+      setInputStyle(this, this.value.trim() === 'xgx');
+    });
+    passwordInput.addEventListener('input', function() {
+      setInputStyle(this, this.value.trim() === '060913');
     });
 
     // 抖动动画
