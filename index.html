@@ -1268,101 +1268,137 @@
       }
 
       // ---- 照片尺寸和间距 ----
-      const photoSize = Math.round(Math.min(44, Math.max(32, Math.sqrt(cw * ch * 0.5 / PHOTOS.length))));
-      const gridStep = Math.round(photoSize * 1.5);
-      const halfG = gridStep / 2;
+      const photoSize = Math.round(Math.min(44, Math.max(32, Math.sqrt(cw * ch * 0.45 / PHOTOS.length))));
+      const minDist = photoSize * 1.4; // 照片中心最小距离
 
-      // ---- 三个形状都画在离屏 canvas 上用粗线宽，然后采样 alpha ----
-      const off = document.createElement('canvas');
-      off.width = cw; off.height = ch;
-      const ctx = off.getContext('2d');
-      ctx.fillStyle = ctx.strokeStyle = '#000';
-      ctx.lineCap = ctx.lineJoin = 'round';
-
-      const totalW = cw * 0.92, charW = totalW / 3.1, gap = charW * 0.06;
+      // ---- 三个形状区域 ----
+      const totalW = cw * 0.9, colW = totalW / 3.1, gap = colW * 0.06;
       const startX = (cw - totalW) / 2;
-      const shapeH = ch * 0.84, sy = (ch - shapeH) / 2;
-      const thick = charW * 0.24; // 更粗的线，更多采样点
+      const shapeH = ch * 0.78, sy = (ch - shapeH) / 2;
 
-      // ---- "2": 粗线路径（含底部横条） ----
-      const x2 = startX, y2 = sy, wc = charW*0.85, hc = shapeH*0.9;
-      const r2 = wc * 0.46;
-      ctx.lineWidth = thick;
-      ctx.beginPath();
-      ctx.moveTo(x2 + thick, y2 + thick);
-      ctx.lineTo(x2 + wc - r2, y2 + thick);
-      ctx.arcTo(x2 + wc, y2 + thick, x2 + wc, y2 + r2, r2);
-      ctx.lineTo(x2 + wc, y2 + hc * 0.55);
-      ctx.lineTo(x2 + thick * 0.5, y2 + hc - thick);
-      ctx.lineTo(x2 + wc * 0.75, y2 + hc - thick);  // 底部横条
-      ctx.stroke();
+      // ---- 直接生成形状点集（不用canvas） ----
+      const allShapePts = [];
 
-      // ---- "0": 粗线椭圆（略窄于2，比例更自然） ----
-      const x0 = startX + charW + gap, y0 = sy;
-      const w0 = hc * 0.65; // 宽度基于高度，接近圆形
-      ctx.beginPath();
-      ctx.ellipse(x0 + wc/2, y0 + hc/2, w0/2 - thick/2, hc/2 - thick/2, 0, 0, Math.PI*2);
-      ctx.stroke();
-
-      // ---- "❤️": 填充路径 + 粗线描边 ----
-      const xh = startX + (charW+gap)*2 + charW/2, yh = sy + hc/2;
-      const hs = Math.min(charW, shapeH) / 36;
-      ctx.lineWidth = thick * 0.55;
-      ctx.beginPath();
-      for (let t = 0; t <= Math.PI*2; t += 0.01) {
-        const px = xh + 16*Math.pow(Math.sin(t),3)*hs;
-        const py = yh - (13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))*hs;
-        if (t===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+      // === "2" 的路径点 ===
+      const x2 = startX, y2t = sy, w = colW * 0.88, h = shapeH * 0.9, r = w * 0.44, t = w * 0.18;
+      const arcCX = x2 + w - r, arcCY = y2t + r;
+      // 顶部横线 (密集采样)
+      for (let px = x2; px <= x2 + w - r; px += 2) {
+        for (let dy = -t/2; dy <= t/2; dy += 2) allShapePts.push({x: px, y: y2t + dy});
       }
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
+      // 右上弧
+      for (let ang = -Math.PI/2; ang <= 0.1; ang += 0.03) {
+        for (let dr = -t/2; dr <= t/2; dr += 2) {
+          allShapePts.push({x: arcCX + Math.cos(ang)*(r+dr), y: arcCY + Math.sin(ang)*(r+dr)});
+        }
+      }
+      // 斜线
+      const sx = x2 + w, sy2 = y2t + r, ex = x2, ey2 = y2t + h;
+      const sdx = ex - sx, sdy = ey2 - sy2, slen = Math.sqrt(sdx*sdx + sdy*sdy);
+      for (let d = 0; d < slen; d += 2) {
+        const frac = d / slen;
+        for (let off = -t/2; off <= t/2; off += 2) {
+          allShapePts.push({x: sx + sdx*frac + off*sdy/slen, y: sy2 + sdy*frac - off*sdx/slen});
+        }
+      }
+      // 底部横线
+      for (let px = x2; px <= x2 + w * 0.9; px += 2) {
+        for (let dy = -t/2; dy <= t/2; dy += 2) allShapePts.push({x: px, y: y2t + h + dy});
+      }
 
-      // ---- 采样 ----
-      const allPts = [];
-      function sample(step, minAlpha) {
-        for (let y = halfG; y < ch - halfG; y += step) {
-          for (let x = halfG; x < cw - halfG; x += step) {
-            const a = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data[3];
-            if (a > minAlpha) allPts.push({x, y});
-          }
+      // === "0" 的环形点 ===
+      const x0c = startX + colW + gap + w/2, y0c = sy + shapeH/2;
+      const rx = w * 0.42, ry = h * 0.52;
+      for (let ang = 0; ang < Math.PI*2; ang += 0.025) {
+        const ca = Math.cos(ang), sa = Math.sin(ang);
+        for (let dr = -t/2; dr <= t/2; dr += 2) {
+          allShapePts.push({x: x0c + (rx + dr) * ca, y: y0c + (ry + dr) * sa});
         }
       }
 
-      sample(gridStep, 60);
-      if (allPts.length < PHOTOS.length) { allPts.length = 0; sample(Math.round(gridStep*0.65), 30); }
-      if (allPts.length < PHOTOS.length) { allPts.length = 0; sample(Math.round(gridStep*0.45), 10); }
-
-      // ---- 洗牌取点 ----
-      for (let i = allPts.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [allPts[i], allPts[j]] = [allPts[j], allPts[i]];
+      // === "❤️" 的填充点 + 轮廓点 ===
+      const xhc = startX + (colW + gap)*2 + colW/2, yhc = sy + shapeH/2 + h * 0.02;
+      const hs = Math.min(colW, shapeH) / 37;
+      // 填充内部
+      for (let i = 0; i < 8000; i++) {
+        const t_ = Math.random() * Math.PI * 2, r_ = Math.pow(Math.random(), 0.55);
+        const hx = xhc + 16 * Math.pow(Math.sin(t_), 3) * hs * r_;
+        const hy = yhc - (13*Math.cos(t_)-5*Math.cos(2*t_)-2*Math.cos(3*t_)-Math.cos(4*t_)) * hs * r_;
+        allShapePts.push({x: hx, y: hy});
+      }
+      // 加粗轮廓
+      for (let i = 0; i < 3000; i++) {
+        const t_ = Math.random() * Math.PI * 2;
+        const hx = xhc + 16 * Math.pow(Math.sin(t_), 3) * hs;
+        const hy = yhc - (13*Math.cos(t_)-5*Math.cos(2*t_)-2*Math.cos(3*t_)-Math.cos(4*t_)) * hs;
+        for (let off = -t; off <= t; off += 2) {
+          allShapePts.push({x: hx + (Math.random()-0.5)*t, y: hy + (Math.random()-0.5)*t});
+        }
       }
 
-      const renderCount = Math.min(PHOTOS.length, allPts.length);
+      // ---- 贪心选点：确保不重叠 ----
+      // 洗牌
+      for (let i = allShapePts.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [allShapePts[i], allShapePts[j]] = [allShapePts[j], allShapePts[i]];
+      }
 
-      // ---- fallback: 纯爱心 ----
-      let finalPts;
-      if (renderCount >= 10) {
-        finalPts = allPts.slice(0, renderCount);
-      } else {
-        finalPts = [];
+      const chosen = [];
+      const minDist2 = minDist * minDist;
+      for (let i = 0; i < allShapePts.length && chosen.length < PHOTOS.length; i++) {
+        const p = allShapePts[i];
+        // 边界检查
+        if (p.x < 5 || p.x > cw - 5 || p.y < 5 || p.y > ch - 5) continue;
+        // 距离检查
+        let ok = true;
+        for (let j = 0; j < chosen.length; j++) {
+          const dx = p.x - chosen[j].x, dy = p.y - chosen[j].y;
+          if (dx*dx + dy*dy < minDist2) { ok = false; break; }
+        }
+        if (ok) chosen.push(p);
+      }
+
+      // 还不够 → 缩小距离再扫一遍
+      if (chosen.length < PHOTOS.length) {
+        const smallerDist = minDist * 0.7;
+        const sm2 = smallerDist * smallerDist;
+        for (let i = 0; i < allShapePts.length && chosen.length < PHOTOS.length; i++) {
+          const p = allShapePts[i];
+          if (p.x < 2 || p.x > cw - 2 || p.y < 2 || p.y > ch - 2) continue;
+          let ok = true;
+          for (let j = 0; j < chosen.length; j++) {
+            const dx = p.x - chosen[j].x, dy = p.y - chosen[j].y;
+            if (dx*dx + dy*dy < sm2) { ok = false; break; }
+          }
+          if (ok) chosen.push(p);
+        }
+      }
+
+      // fallback: 纯爱心
+      if (chosen.length < 10) {
+        chosen.length = 0;
         const fcx = cw/2, fcy = ch/2, fsx = cw/38, fsy = ch/34;
         for (let i = 0; i < PHOTOS.length; i++) {
-          const t_ = Math.random()*Math.PI*2, r_ = Math.sqrt(Math.random());
-          finalPts.push({
-            x: fcx + 16*Math.pow(Math.sin(t_),3)*r_*fsx,
-            y: fcy - (13*Math.cos(t_)-5*Math.cos(2*t_)-2*Math.cos(3*t_)-Math.cos(4*t_))*r_*fsy
-          });
+          let pos;
+          let tries = 0;
+          do {
+            const t_ = Math.random()*Math.PI*2, r_ = Math.sqrt(Math.random());
+            pos = {
+              x: fcx + 16*Math.pow(Math.sin(t_),3)*r_*fsx,
+              y: fcy - (13*Math.cos(t_)-5*Math.cos(2*t_)-2*Math.cos(3*t_)-Math.cos(4*t_))*r_*fsy
+            };
+            tries++;
+          } while (tries < 50 && chosen.some(c => (c.x-pos.x)*(c.x-pos.x)+(c.y-pos.y)*(c.y-pos.y) < minDist2*0.6));
+          chosen.push(pos);
         }
       }
 
       // ---- 创建 img 元素 ----
       const fragment = document.createDocumentFragment();
-      const total = finalPts.length;
+      const total = chosen.length;
 
       for (let i = 0; i < total; i++) {
-        const p = finalPts[i];
+        const p = chosen[i];
         const sz = photoSize * (0.85 + Math.random() * 0.25);
         const rot = (Math.random() - 0.5) * 20;
         const img = document.createElement('img');
