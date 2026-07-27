@@ -1284,8 +1284,10 @@
       var W = Math.round(FW * scale), H = Math.round(FH * scale);
       var offX = Math.round((viewW - W) / 2), offY = Math.round((viewH - H) / 2);
 
-      // 照片逻辑尺寸
-      var pSizeLog = 36;
+      // 照片尺寸：大屏幕更大，但有上下限
+      var pSizeLog = Math.round(34 + (scale - 0.5) * 20);
+      if (pSizeLog < 30) pSizeLog = 30;
+      if (pSizeLog > 52) pSizeLog = 52;
 
       // 三列 — 在固定 FW×FH 坐标下计算
       var colW = FW * 0.30, gap = FW * 0.025;
@@ -1304,7 +1306,7 @@
         for (var s = 0; s < pts.length - 1; s++) {
           var sx = pts[s][0], sy = pts[s][1], ex = pts[s+1][0], ey = pts[s+1][1];
           var dx = ex-sx, dy = ey-sy, len = Math.sqrt(dx*dx+dy*dy) || 1;
-          var n = Math.max(1, Math.floor(len / sp));
+          var n = Math.max(3, Math.floor(len / sp));
           for (var i = 0; i <= n; i++) {
             var f = i / n;
             res.push({x: sx+dx*f + (Math.random()-0.5)*sp*0.15, y: sy+dy*f + (Math.random()-0.5)*sp*0.15});
@@ -1321,14 +1323,16 @@
         return res;
       }
 
-      // ===== "2": 顶横→小弧→对角线→底横(标准字形) =====
-      var sw2 = colW*0.92, sh2 = colH*0.72, r2 = sw2*0.25;
+      // ===== "2": 顶横→大圆弧→对角线→底横 =====
+      var sw2 = colW*0.92, sh2 = colH*0.72, r2 = sw2*0.38;
       var xL = cx1-sw2/2, xR = cx1+sw2/2, yT = cy-sh2/2, yB = cy+sh2/2;
-      var aCX = xR-r2, aCY = yT+r2;
+      var aCX = xR-r2, aCY = yT+r2;                                    // 弧心
+      var arcEndAng = Math.PI/6;                                         // 弧从-90°到+30°,弯过水平
+      var arcEndX = aCX + Math.cos(arcEndAng)*r2, arcEndY = aCY + Math.sin(arcEndAng)*r2;
       var path2 = [].concat(
-        pathSamples([[xL,yT],[aCX, yT]], spacing),                       // 顶横→弧起点
-        arcSamples(aCX, aCY, r2, -Math.PI/2, 0, spacing),               // 右上弧(90°圆角)
-        pathSamples([[xR, yT+r2],[xL+pSizeLog, yB-pSizeLog*0.4]],spacing), // 对角线
+        pathSamples([[xL,yT],[aCX, yT]], spacing),                       // 顶横
+        arcSamples(aCX, aCY, r2, -Math.PI/2, arcEndAng, spacing),       // 大弧(弯过顶部到右下方)
+        pathSamples([[arcEndX, arcEndY],[xL+pSizeLog, yB-pSizeLog*0.4]],spacing), // 对角线
         pathSamples([[xL+pSizeLog, yB],[xR*0.85, yB]],spacing)           // 底横
       );
 
