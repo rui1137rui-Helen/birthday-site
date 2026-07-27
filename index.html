@@ -84,6 +84,8 @@
       animation: fadeInUp 0.6s ease;
       position: relative;
       z-index: 2;
+      border: 2px solid transparent;
+      transition: box-shadow 0.4s ease, border 0.4s ease;
     }
 
     @keyframes fadeInUp {
@@ -127,7 +129,7 @@
       border: 2px solid #eee;
       border-radius: 12px;
       font-size: 1rem;
-      transition: all 0.3s;
+      transition: all 0.4s ease;
       outline: none;
       background: #fafafa;
     }
@@ -766,6 +768,20 @@
       }
 
       // 特殊页面逻辑
+      if (pageId === 'login-page') {
+        // 重置登录卡片的绿色成功效果
+        const card = document.querySelector('.login-card');
+        if (card) {
+          card.style.boxShadow = '';
+          card.style.border = '';
+          card.querySelectorAll('input').forEach(inp => {
+            inp.style.borderColor = '';
+            inp.style.background = '';
+            inp.style.boxShadow = '';
+          });
+        }
+      }
+
       if (pageId === 'birthday-page') startConfetti();
       else stopConfetti();
 
@@ -798,7 +814,16 @@
 
       if (username === 'xgx' && password === '060913') {
         errorMsg.classList.remove('show');
-        showPage('quiz-page');
+        const card = document.querySelector('.login-card');
+        card.style.boxShadow = '0 0 40px rgba(72,199,142,0.6), 0 20px 60px rgba(0,0,0,0.1)';
+        card.style.border = '2px solid #48c78e';
+        const inputs = card.querySelectorAll('input');
+        inputs.forEach(inp => {
+          inp.style.borderColor = '#48c78e';
+          inp.style.background = '#f0faf5';
+          inp.style.boxShadow = '0 0 0 4px rgba(72,199,142,0.1)';
+        });
+        setTimeout(() => showPage('quiz-page'), 500);
       } else {
         errorMsg.classList.add('show');
         const card = document.querySelector('.login-card');
