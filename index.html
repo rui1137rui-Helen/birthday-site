@@ -1268,12 +1268,12 @@
         return;
       }
 
-      // ---- 网格间距和照片尺寸（比之前大，更松散） ----
+      // ---- 照片尺寸和间距 ----
       const photoSize = Math.round(Math.min(48, Math.max(36, Math.sqrt(cw * ch * 0.65 / PHOTOS.length))));
-      const gridStep = Math.round(photoSize * 1.35);  // 格距=照片1.35倍，保证大量空白
+      const gridStep = Math.round(photoSize * 1.35);
       const halfG = gridStep / 2;
 
-      // ---- 渲染 "20❤️" 到装饰画布，字号更大填满更多空间 ----
+      // ---- 在装饰画布上用几何图形绘制 "20❤️"（不用字体，保证每个部分都实心完整） ----
       const offCanvas = document.getElementById('decoration-canvas');
       const origW = offCanvas.width;
       const origH = offCanvas.height;
@@ -1283,68 +1283,56 @@
 
       ctx.clearRect(0, 0, cw, ch);
       ctx.fillStyle = '#000';
-      const fSize = Math.min(cw / 4.5, ch / 1.4);  // 比之前大很多
 
-      ctx.font = `900 ${fSize * 1.15}px "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('2', cw * 0.17, ch * 0.5);
-      ctx.fillText('0', cw * 0.43, ch * 0.5);
-      ctx.font = `900 ${fSize * 1.35}px "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif`;
-      ctx.fillText('❤️', cw * 0.72, ch * 0.47);
+      // 三个形状的参考框
+      const charW = cw * 0.23;
+      const charH = ch * 0.75;
+      const topY = (ch - charH) / 2;
+
+      // "2"
+      drawDigit2(ctx, cw * 0.05, topY, charW, charH);
+      // "0"
+      drawDigit0(ctx, cw * 0.305, topY, charW, charH);
+      // "❤️"
+      const xh = cw * 0.57, yh = topY, wh = charW * 0.9, hh = charH;
+      drawHeartShape(ctx, xh + wh/2, yh + hh/2, wh * 0.42);
 
       // ---- 网格采样 ----
       const allPts = [];
       for (let y = halfG; y < ch - halfG; y += gridStep) {
         for (let x = halfG; x < cw - halfG; x += gridStep) {
           const a = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data[3];
-          if (a > 50) allPts.push({x, y});
+          if (a > 80) allPts.push({x, y});
         }
       }
 
-      // 采样不够 → 缩小格距重来
-      let activeStep = gridStep;
+      // 不够 → 缩格距
       if (allPts.length < PHOTOS.length) {
         allPts.length = 0;
-        activeStep = Math.round(gridStep * 0.7);
-        for (let y = halfG; y < ch - halfG; y += activeStep) {
-          for (let x = halfG; x < cw - halfG; x += activeStep) {
+        const denser = Math.round(gridStep * 0.6);
+        for (let y = halfG; y < ch - halfG; y += denser) {
+          for (let x = halfG; x < cw - halfG; x += denser) {
             const a = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data[3];
-            if (a > 30) allPts.push({x, y});
+            if (a > 40) allPts.push({x, y});
           }
         }
       }
 
-      // 还不够 → 继续缩
       if (allPts.length < PHOTOS.length) {
         allPts.length = 0;
-        activeStep = Math.round(gridStep * 0.5);
-        for (let y = halfG; y < ch - halfG; y += activeStep) {
-          for (let x = halfG; x < cw - halfG; x += activeStep) {
+        const densest = Math.round(gridStep * 0.42);
+        for (let y = halfG; y < ch - halfG; y += densest) {
+          for (let x = halfG; x < cw - halfG; x += densest) {
             const a = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data[3];
             if (a > 15) allPts.push({x, y});
           }
         }
       }
 
-      // ---- 从边界点生成额外补位（确保全部116张照片都有位置） ----
-      if (allPts.length < PHOTOS.length) {
-        const existing = allPts.length;
-        for (let i = 0; i < PHOTOS.length - existing && allPts.length > 0; i++) {
-          const src = allPts[i % existing];
-          const offset = activeStep * (0.5 + 0.3 * (i % 3));
-          const angle = (i * 137.5) * Math.PI / 180;
-          const nx = Math.max(halfG, Math.min(cw - halfG, src.x + Math.cos(angle) * offset));
-          const ny = Math.max(halfG, Math.min(ch - halfG, src.y + Math.sin(angle) * offset));
-          allPts.push({ x: nx, y: ny });
-        }
-      }
-
-      // 恢复装饰画布
       offCanvas.width = origW;
       offCanvas.height = origH;
 
-      // ---- 洗牌取点 ----
+      // ---- 洗牌 ----
       for (let i = allPts.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [allPts[i], allPts[j]] = [allPts[j], allPts[i]];
@@ -1352,18 +1340,18 @@
 
       const renderCount = Math.min(PHOTOS.length, allPts.length);
 
-      // ---- 纯爱心fallback ----
+      // ---- 爱心 fallback ----
       let finalPts;
       if (renderCount >= 10) {
         finalPts = allPts.slice(0, renderCount);
       } else {
         finalPts = [];
-        const hscX = cw / 38, hscY = ch / 34, hCX = cw / 2, hCY = ch / 2;
+        const cx = cw/2, cy = ch/2, sx = cw/38, sy = ch/34;
         for (let i = 0; i < PHOTOS.length; i++) {
-          const t = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random());
+          const t = Math.random()*Math.PI*2, r = Math.sqrt(Math.random());
           finalPts.push({
-            x: hCX + (16*Math.pow(Math.sin(t),3)) * r * hscX,
-            y: hCY - (13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t)) * r * hscY
+            x: cx + 16*Math.pow(Math.sin(t),3)*r*sx,
+            y: cy - (13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))*r*sy
           });
         }
       }
@@ -1411,6 +1399,51 @@
         if (batchIdx * BATCH < imgs.length) setTimeout(loadBatch, 40);
       }
       loadBatch();
+    }
+
+    // ========== 几何绘图 - "2", "0", "❤️" 实心形状 ==========
+
+    function drawDigit2(ctx, x, y, w, h) {
+      const t = h * 0.14;
+      const r = w * 0.45;
+      ctx.beginPath();
+      // 外轮廓
+      ctx.moveTo(x + t, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.arcTo(x + w, y, x + w, y + r, r);
+      ctx.lineTo(x + w, y + h * 0.55);
+      ctx.lineTo(x + t * 0.8, y + h);
+      ctx.lineTo(x + w * 0.95, y + h);
+      // 底部内收
+      ctx.lineTo(x + w * 0.95, y + h - t * 0.85);
+      ctx.lineTo(x + t * 2.6, y + h - t * 0.5);
+      // 沿斜线内侧回
+      ctx.lineTo(x + w - t, y + h * 0.55);
+      ctx.lineTo(x + w - t, y + r);
+      ctx.arcTo(x + w - t, y + t, x + w - r - t, y + t, r - t);
+      ctx.lineTo(x + t, y + t);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawDigit0(ctx, x, y, w, h) {
+      const inset = h * 0.14;
+      ctx.beginPath();
+      ctx.ellipse(x + w/2, y + h/2, w/2, h/2, 0, 0, Math.PI * 2);
+      ctx.ellipse(x + w/2, y + h/2, w/2 - inset, h/2 - inset, 0, 0, Math.PI * 2);
+      ctx.fill('evenodd');
+    }
+
+    function drawHeartShape(ctx, cx, cy, scale) {
+      ctx.beginPath();
+      for (let t = 0; t <= Math.PI * 2; t += 0.02) {
+        const hx = cx + 16 * Math.pow(Math.sin(t), 3) * scale;
+        const hy = cy - (13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t)) * scale;
+        if (t === 0) ctx.moveTo(hx, hy);
+        else ctx.lineTo(hx, hy);
+      }
+      ctx.closePath();
+      ctx.fill();
     }
 
     // ========== 灯箱 ==========
