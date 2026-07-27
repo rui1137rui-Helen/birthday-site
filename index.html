@@ -1252,16 +1252,45 @@
     let galleryBuilt = false;
     let galleryLoaded = 0;
 
+    // ========== 几何判断函数 ==========
+    function inside2(x, y, cx, cy, w, h) {
+      const t = w * 0.20, r = w * 0.46, tt = t / 2;
+      const dx = x - cx, dy = y - cy;
+      const hw = w / 2, hh = h / 2;
+      // 顶部横条
+      if (Math.abs(dy + hh) < tt && dx > -hw && dx < hw - r) return true;
+      // 右上弧
+      const acx = hw - r, acy = -hh + r;
+      const adx = dx - acx, ady = dy - acy;
+      const ad = Math.sqrt(adx*adx + ady*ady);
+      if (ad > r - tt && ad < r + tt && adx > -tt && ady < tt) return true;
+      // 斜线
+      const sx = hw, sy = -hh + r, ex = -hw, ey = hh;
+      const ldx = ex - sx, ldy = ey - sy, len = Math.sqrt(ldx*ldx+ldy*ldy);
+      const ux = ldx/len, uy = ldy/len;
+      const proj = (dx-sx)*ux + (dy-sy)*uy;
+      if (proj > 0 && proj < len && Math.abs((dx-sx)*uy - (dy-sy)*ux) < tt) return true;
+      // 底部横条
+      if (Math.abs(dy - hh) < tt && dx > -hw && dx < hw) return true;
+      return false;
+    }
+
+    function inside0(x, y, cx, cy, w, h) {
+      const dx = x - cx, dy = y - cy;
+      const rx = w / 2, ry = h / 2;
+      if (rx <= 0 || ry <= 0) return false;
+      const d = Math.sqrt((dx*dx)/(rx*rx) + (dy*dy)/(ry*ry));
+      return d > 0.80 && d < 1.18;
+    }
+
     function buildGallery() {
       if (galleryBuilt) return;
       galleryBuilt = true;
 
       const container = document.getElementById('gallery-heart');
       const loadingEl = document.getElementById('gallery-loading');
-
-      // 占满整个视口
-      const cw = window.innerWidth * 0.99;
-      const ch = window.innerHeight * 0.93;
+      const cw = window.innerWidth * 0.98;
+      const ch = window.innerHeight * 0.9;
 
       if (cw < 200 || ch < 200) {
         galleryBuilt = false;
@@ -1270,79 +1299,59 @@
       }
 
       // ---- 照片尺寸和间距 ----
-      const photoSize = Math.round(Math.min(46, Math.max(34, Math.sqrt(cw * ch * 0.55 / PHOTOS.length))));
-      const gridStep = Math.round(photoSize * 1.55);  // 更大间距
+      const photoSize = Math.round(Math.min(44, Math.max(32, Math.sqrt(cw * ch * 0.5 / PHOTOS.length))));
+      const gridStep = Math.round(photoSize * 1.5);
       const halfG = gridStep / 2;
 
-      // ---- 独立离屏 canvas：字体画 "2""0" + 路径画 "❤️" ----
+      // ---- 形状区域 ----
+      const totalW = cw * 0.88, charW = totalW / 3.1, gap = charW * 0.08;
+      const startX = (cw - totalW) / 2;
+      const shapeH = ch * 0.78, sy = (ch - shapeH) / 2;
+
+      // "2"
+      const cx2 = startX + charW/2, cy2 = sy + shapeH/2;
+      const w2 = charW*0.85, h2 = shapeH*0.9;
+
+      // "0"
+      const cx0 = startX + charW + gap + charW/2, cy0 = sy + shapeH/2;
+      const w0 = charW*0.8, h0 = shapeH*0.9;
+
+      // "❤️" — 画到离屏 canvas 上然后采样
       const off = document.createElement('canvas');
-      off.width = cw;
-      off.height = ch;
+      off.width = cw; off.height = ch;
       const ctx = off.getContext('2d');
       ctx.fillStyle = '#000';
-
-      const fSize = Math.min(cw / 3.6, ch / 1.35);
-      const yMid = ch * 0.48;
-
-      // 字体渲染 + 描边加粗，确保笔画完整
-      ctx.font = `900 ${fSize}px "PingFang SC","Microsoft YaHei","Helvetica Neue",sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.strokeStyle = '#000';
-      ctx.lineWidth = Math.round(fSize * 0.06);
-      ctx.lineJoin = 'round';
-
-      ctx.strokeText('2', cw * 0.13, yMid);
-      ctx.fillText('2', cw * 0.13, yMid);
-
-      ctx.strokeText('0', cw * 0.39, yMid);
-      ctx.fillText('0', cw * 0.39, yMid);
-
-      // "❤️" 路径，稍大一点让照片不那么挤
-      const hx = cw * 0.67, hy = ch * 0.48, hscale = fSize / 17;
+      const hcx = startX + (charW+gap)*2 + charW/2, hcy = sy + shapeH/2;
+      const hs = Math.min(charW, shapeH) / 36;
       ctx.beginPath();
-      for (let t = 0; t <= Math.PI * 2; t += 0.015) {
-        const px = hx + 16 * Math.pow(Math.sin(t), 3) * hscale;
-        const py = hy - (13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t)) * hscale;
-        if (t === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      for (let t = 0; t <= Math.PI*2; t += 0.01) {
+        const px = hcx + 16*Math.pow(Math.sin(t),3)*hs;
+        const py = hcy - (13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))*hs;
+        if (t===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
       }
       ctx.closePath();
       ctx.fill();
-      ctx.stroke();
 
-      // ---- 网格采样 ----
+      // ---- 采样 ----
       const allPts = [];
-      for (let y = halfG; y < ch - halfG; y += gridStep) {
-        for (let x = halfG; x < cw - halfG; x += gridStep) {
-          const a = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data[3];
-          if (a > 30) allPts.push({x, y});
-        }
-      }
-
-      // 不够 → 缩小格距
-      if (allPts.length < PHOTOS.length) {
-        allPts.length = 0;
-        const ds = Math.round(gridStep * 0.65);
-        for (let y = halfG; y < ch - halfG; y += ds) {
-          for (let x = halfG; x < cw - halfG; x += ds) {
-            const a = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data[3];
-            if (a > 15) allPts.push({x, y});
+      function sample(step, minAlpha) {
+        for (let y = halfG; y < ch - halfG; y += step) {
+          for (let x = halfG; x < cw - halfG; x += step) {
+            let hit = inside2(x,y,cx2,cy2,w2,h2) || inside0(x,y,cx0,cy0,w0,h0);
+            if (!hit) {
+              const a = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data[3];
+              hit = a > minAlpha;
+            }
+            if (hit) allPts.push({x,y});
           }
         }
       }
 
-      if (allPts.length < PHOTOS.length) {
-        allPts.length = 0;
-        const ds2 = Math.round(gridStep * 0.45);
-        for (let y = halfG; y < ch - halfG; y += ds2) {
-          for (let x = halfG; x < cw - halfG; x += ds2) {
-            const a = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data[3];
-            if (a > 5) allPts.push({x, y});
-          }
-        }
-      }
+      sample(gridStep, 60);
+      if (allPts.length < PHOTOS.length) { allPts.length = 0; sample(Math.round(gridStep*0.65), 30); }
+      if (allPts.length < PHOTOS.length) { allPts.length = 0; sample(Math.round(gridStep*0.45), 10); }
 
-      // ---- 洗牌 ----
+      // ---- 洗牌取点 ----
       for (let i = allPts.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [allPts[i], allPts[j]] = [allPts[j], allPts[i]];
@@ -1350,18 +1359,18 @@
 
       const renderCount = Math.min(PHOTOS.length, allPts.length);
 
-      // ---- 爱心 fallback ----
+      // ---- fallback: 纯爱心 ----
       let finalPts;
       if (renderCount >= 10) {
         finalPts = allPts.slice(0, renderCount);
       } else {
         finalPts = [];
-        const cx = cw/2, cy = ch/2, sx = cw/38, sy = ch/34;
+        const fcx = cw/2, fcy = ch/2, fsx = cw/38, fsy = ch/34;
         for (let i = 0; i < PHOTOS.length; i++) {
-          const t = Math.random()*Math.PI*2, r = Math.sqrt(Math.random());
+          const t_ = Math.random()*Math.PI*2, r_ = Math.sqrt(Math.random());
           finalPts.push({
-            x: cx + 16*Math.pow(Math.sin(t),3)*r*sx,
-            y: cy - (13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))*r*sy
+            x: fcx + 16*Math.pow(Math.sin(t_),3)*r_*fsx,
+            y: fcy - (13*Math.cos(t_)-5*Math.cos(2*t_)-2*Math.cos(3*t_)-Math.cos(4*t_))*r_*fsy
           });
         }
       }
