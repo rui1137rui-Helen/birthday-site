@@ -331,10 +331,12 @@
 
     .congrats-content h1 {
       font-size: clamp(2.5rem, 10vw, 5rem);
-      color: #fff;
-      text-shadow: 0 4px 30px rgba(0,0,0,0.2);
+      color: #2d2d2d;
+      text-shadow: 0 4px 30px rgba(0,0,0,0.08);
       margin-bottom: 8px;
     }
+
+    .congrats-content p { color: #4a4a4a; }
 
     .congrats-content .sparkles {
       font-size: 2.5rem;
@@ -574,6 +576,15 @@
       transform: translateY(-2px);
     }
 
+    .gallery-back-btn.dark {
+      color: #555;
+      border-color: rgba(0,0,0,0.2);
+      background: rgba(0,0,0,0.06);
+    }
+    .gallery-back-btn.dark:hover {
+      background: rgba(0,0,0,0.12);
+    }
+
     /* ========== 响应式 ========== */
     @media (max-width: 480px) {
       .login-card, .letter-card, .quiz-card {
@@ -763,6 +774,12 @@
       if (backTargets[pageId]) {
         backBtn.style.display = '';
         backBtn.setAttribute('data-target', backTargets[pageId]);
+        // 恭喜页面用深色按钮
+        if (pageId === 'result-c-page') {
+          backBtn.classList.add('dark');
+        } else {
+          backBtn.classList.remove('dark');
+        }
       } else {
         backBtn.style.display = 'none';
       }
