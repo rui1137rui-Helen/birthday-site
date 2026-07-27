@@ -1265,6 +1265,7 @@
       var ow = dc.width, oh = dc.height;
       dc.width = W; dc.height = H;
       var ctx = dc.getContext('2d');
+      ctx.clearRect(0, 0, W, H);
       ctx.fillStyle = ctx.strokeStyle = '#000';
       ctx.lineCap = ctx.lineJoin = 'round';
 
