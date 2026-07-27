@@ -1256,186 +1256,182 @@
       if (galleryBuilt) return;
       galleryBuilt = true;
 
-      const container = document.getElementById('gallery-heart');
-      const loadingEl = document.getElementById('gallery-loading');
-      const cw = window.innerWidth * 0.98;
-      const ch = window.innerHeight * 0.9;
+      var container = document.getElementById('gallery-heart');
+      var loadingEl = document.getElementById('gallery-loading');
+      var cw = window.innerWidth * 0.96;
+      var ch = window.innerHeight * 0.86;
+      if (cw < 200 || ch < 200) { galleryBuilt = false; setTimeout(buildGallery, 100); return; }
 
-      if (cw < 200 || ch < 200) {
-        galleryBuilt = false;
-        setTimeout(buildGallery, 100);
-        return;
+      var photoSize = Math.round(Math.min(44, Math.max(32, Math.sqrt(cw * ch * 0.45 / PHOTOS.length))));
+      var minDist = photoSize * 1.5;
+
+      // === 创建临时可见 canvas 来渲染形状 ===
+      var tmpCanvas = document.createElement('canvas');
+      tmpCanvas.style.cssText = 'position:absolute;top:0;left:0;width:'+cw+'px;height:'+ch+'px;z-index:10;';
+      tmpCanvas.width = cw;
+      tmpCanvas.height = ch;
+      container.appendChild(tmpCanvas);
+
+      var ctx = tmpCanvas.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, cw, ch);
+      ctx.fillStyle = '#000';
+      ctx.strokeStyle = '#000';
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      var colW = cw * 0.29;
+      var gap = cw * 0.015;
+      var totalW = colW * 3 + gap * 2;
+      var left = (cw - totalW) / 2;
+      var shapeH = ch * 0.76;
+      var top = (ch - shapeH) / 2;
+      var thick = Math.round(colW * 0.25);  // 很粗的笔画
+      ctx.lineWidth = thick;
+
+      // 为了填充够厚，fill+stroke 双重绘制
+      var x1 = left, x2 = left + colW + gap, x3 = left + (colW+gap)*2;
+      var cx1 = x1 + colW/2, cx2 = x2 + colW/2, cx3 = x3 + colW/2;
+      var cy = top + shapeH/2;
+
+      // === "2" ===  使用粗线路径 + 填充笔画形状
+      var wc = colW * 0.88, hc = shapeH * 0.9;
+      var r2 = wc * 0.44;
+      ctx.beginPath();
+      ctx.moveTo(x1 + thick*0.5, top + thick*0.5);
+      ctx.lineTo(x1 + wc - r2, top + thick*0.5);
+      ctx.arcTo(x1 + wc, top + thick*0.5, x1 + wc, top + r2, r2);
+      ctx.lineTo(x1 + wc, top + hc * 0.53);
+      ctx.lineTo(x1 + thick*0.3, top + hc - thick*0.5);
+      ctx.lineTo(x1 + wc * 0.85, top + hc - thick*0.5);
+      ctx.stroke();
+
+      // === "0" === 粗线椭圆
+      ctx.beginPath();
+      ctx.ellipse(cx2, cy, (colW*0.7-thick)/2, (shapeH-thick)/2, 0, 0, Math.PI*2);
+      ctx.stroke();
+
+      // === "❤️" === 填充+描边
+      var hs = Math.min(colW, shapeH) / 36;
+      ctx.lineWidth = thick * 0.55;
+      ctx.beginPath();
+      for (var t = 0; t <= Math.PI*2; t += 0.01) {
+        var px = cx3 + 16*Math.pow(Math.sin(t),3)*hs;
+        var py = cy - (13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))*hs + hc * 0.02;
+        t === 0 ? ctx.moveTo(px,py) : ctx.lineTo(px,py);
       }
+      ctx.closePath();
+      ctx.fill();
+      ctx.lineWidth = thick * 0.5;
+      ctx.stroke();
 
-      // ---- 照片尺寸和间距 ----
-      const photoSize = Math.round(Math.min(44, Math.max(32, Math.sqrt(cw * ch * 0.45 / PHOTOS.length))));
-      const minDist = photoSize * 1.4; // 照片中心最小距离
+      // === 等待浏览器渲染后采样 ===
+      setTimeout(function() {
+        var imageData = ctx.getImageData(0, 0, cw, ch);
+        var pixels = imageData.data;
+        var allPts = [];
 
-      // ---- 三个形状区域 ----
-      const totalW = cw * 0.9, colW = totalW / 3.1, gap = colW * 0.06;
-      const startX = (cw - totalW) / 2;
-      const shapeH = ch * 0.78, sy = (ch - shapeH) / 2;
-
-      // ---- 直接生成形状点集（不用canvas） ----
-      const allShapePts = [];
-
-      // === "2" 的路径点 ===
-      const x2 = startX, y2t = sy, w = colW * 0.88, h = shapeH * 0.9, r = w * 0.44, t = w * 0.18;
-      const arcCX = x2 + w - r, arcCY = y2t + r;
-      // 顶部横线 (密集采样)
-      for (let px = x2; px <= x2 + w - r; px += 2) {
-        for (let dy = -t/2; dy <= t/2; dy += 2) allShapePts.push({x: px, y: y2t + dy});
-      }
-      // 右上弧
-      for (let ang = -Math.PI/2; ang <= 0.1; ang += 0.03) {
-        for (let dr = -t/2; dr <= t/2; dr += 2) {
-          allShapePts.push({x: arcCX + Math.cos(ang)*(r+dr), y: arcCY + Math.sin(ang)*(r+dr)});
+        // 采样黑色像素
+        for (var y = 2; y < ch - 2; y += 2) {
+          for (var x = 2; x < cw - 2; x += 2) {
+            var idx = (y * cw + x) * 4;
+            // R < 128 即黑色/深色像素
+            if (pixels[idx] < 128) allPts.push({x: x, y: y});
+          }
         }
-      }
-      // 斜线
-      const sx = x2 + w, sy2 = y2t + r, ex = x2, ey2 = y2t + h;
-      const sdx = ex - sx, sdy = ey2 - sy2, slen = Math.sqrt(sdx*sdx + sdy*sdy);
-      for (let d = 0; d < slen; d += 2) {
-        const frac = d / slen;
-        for (let off = -t/2; off <= t/2; off += 2) {
-          allShapePts.push({x: sx + sdx*frac + off*sdy/slen, y: sy2 + sdy*frac - off*sdx/slen});
+
+        // 移除临时canvas
+        container.removeChild(tmpCanvas);
+
+        // === 贪心选不重叠的点 ===
+        for (var i = allPts.length - 1; i > 0; i--) {
+          var j = Math.floor(Math.random() * (i + 1));
+          var tmp = allPts[i]; allPts[i] = allPts[j]; allPts[j] = tmp;
         }
-      }
-      // 底部横线
-      for (let px = x2; px <= x2 + w * 0.9; px += 2) {
-        for (let dy = -t/2; dy <= t/2; dy += 2) allShapePts.push({x: px, y: y2t + h + dy});
-      }
 
-      // === "0" 的环形点 ===
-      const x0c = startX + colW + gap + w/2, y0c = sy + shapeH/2;
-      const rx = w * 0.42, ry = h * 0.52;
-      for (let ang = 0; ang < Math.PI*2; ang += 0.025) {
-        const ca = Math.cos(ang), sa = Math.sin(ang);
-        for (let dr = -t/2; dr <= t/2; dr += 2) {
-          allShapePts.push({x: x0c + (rx + dr) * ca, y: y0c + (ry + dr) * sa});
-        }
-      }
-
-      // === "❤️" 的填充点 + 轮廓点 ===
-      const xhc = startX + (colW + gap)*2 + colW/2, yhc = sy + shapeH/2 + h * 0.02;
-      const hs = Math.min(colW, shapeH) / 37;
-      // 填充内部
-      for (let i = 0; i < 8000; i++) {
-        const t_ = Math.random() * Math.PI * 2, r_ = Math.pow(Math.random(), 0.55);
-        const hx = xhc + 16 * Math.pow(Math.sin(t_), 3) * hs * r_;
-        const hy = yhc - (13*Math.cos(t_)-5*Math.cos(2*t_)-2*Math.cos(3*t_)-Math.cos(4*t_)) * hs * r_;
-        allShapePts.push({x: hx, y: hy});
-      }
-      // 加粗轮廓
-      for (let i = 0; i < 3000; i++) {
-        const t_ = Math.random() * Math.PI * 2;
-        const hx = xhc + 16 * Math.pow(Math.sin(t_), 3) * hs;
-        const hy = yhc - (13*Math.cos(t_)-5*Math.cos(2*t_)-2*Math.cos(3*t_)-Math.cos(4*t_)) * hs;
-        for (let off = -t; off <= t; off += 2) {
-          allShapePts.push({x: hx + (Math.random()-0.5)*t, y: hy + (Math.random()-0.5)*t});
-        }
-      }
-
-      // ---- 贪心选点：确保不重叠 ----
-      // 洗牌
-      for (let i = allShapePts.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [allShapePts[i], allShapePts[j]] = [allShapePts[j], allShapePts[i]];
-      }
-
-      const chosen = [];
-      const minDist2 = minDist * minDist;
-      for (let i = 0; i < allShapePts.length && chosen.length < PHOTOS.length; i++) {
-        const p = allShapePts[i];
-        // 边界检查
-        if (p.x < 5 || p.x > cw - 5 || p.y < 5 || p.y > ch - 5) continue;
-        // 距离检查
-        let ok = true;
-        for (let j = 0; j < chosen.length; j++) {
-          const dx = p.x - chosen[j].x, dy = p.y - chosen[j].y;
-          if (dx*dx + dy*dy < minDist2) { ok = false; break; }
-        }
-        if (ok) chosen.push(p);
-      }
-
-      // 还不够 → 缩小距离再扫一遍
-      if (chosen.length < PHOTOS.length) {
-        const smallerDist = minDist * 0.7;
-        const sm2 = smallerDist * smallerDist;
-        for (let i = 0; i < allShapePts.length && chosen.length < PHOTOS.length; i++) {
-          const p = allShapePts[i];
-          if (p.x < 2 || p.x > cw - 2 || p.y < 2 || p.y > ch - 2) continue;
-          let ok = true;
-          for (let j = 0; j < chosen.length; j++) {
-            const dx = p.x - chosen[j].x, dy = p.y - chosen[j].y;
-            if (dx*dx + dy*dy < sm2) { ok = false; break; }
+        var chosen = [];
+        var md2 = minDist * minDist;
+        for (var i = 0; i < allPts.length && chosen.length < PHOTOS.length; i++) {
+          var p = allPts[i];
+          if (p.x < 5 || p.x > cw-5 || p.y < 5 || p.y > ch-5) continue;
+          var ok = true;
+          for (var j = 0; j < chosen.length; j++) {
+            var dx = p.x - chosen[j].x, dy = p.y - chosen[j].y;
+            if (dx*dx + dy*dy < md2) { ok = false; break; }
           }
           if (ok) chosen.push(p);
         }
-      }
 
-      // fallback: 纯爱心
-      if (chosen.length < 10) {
-        chosen.length = 0;
-        const fcx = cw/2, fcy = ch/2, fsx = cw/38, fsy = ch/34;
-        for (let i = 0; i < PHOTOS.length; i++) {
-          let pos;
-          let tries = 0;
-          do {
-            const t_ = Math.random()*Math.PI*2, r_ = Math.sqrt(Math.random());
-            pos = {
-              x: fcx + 16*Math.pow(Math.sin(t_),3)*r_*fsx,
-              y: fcy - (13*Math.cos(t_)-5*Math.cos(2*t_)-2*Math.cos(3*t_)-Math.cos(4*t_))*r_*fsy
-            };
-            tries++;
-          } while (tries < 50 && chosen.some(c => (c.x-pos.x)*(c.x-pos.x)+(c.y-pos.y)*(c.y-pos.y) < minDist2*0.6));
-          chosen.push(pos);
+        // 不够 → 松一点
+        if (chosen.length < PHOTOS.length) {
+          md2 = (minDist*0.65) * (minDist*0.65);
+          for (var i = 0; i < allPts.length && chosen.length < PHOTOS.length; i++) {
+            var p = allPts[i];
+            if (p.x < 3 || p.x > cw-3 || p.y < 3 || p.y > ch-3) continue;
+            var ok = true;
+            for (var j = 0; j < chosen.length; j++) {
+              var dx = p.x - chosen[j].x, dy = p.y - chosen[j].y;
+              if (dx*dx + dy*dy < md2) { ok = false; break; }
+            }
+            if (ok) chosen.push(p);
+          }
         }
-      }
 
-      // ---- 创建 img 元素 ----
-      const fragment = document.createDocumentFragment();
-      const total = chosen.length;
+        // fallback
+        if (chosen.length < 10) {
+          chosen = [];
+          var fcx = cw/2, fcy = ch/2, fsx = cw/38, fsy = ch/34;
+          for (var i = 0; i < PHOTOS.length; i++) {
+            var t = Math.random()*Math.PI*2, r = Math.sqrt(Math.random());
+            chosen.push({
+              x: fcx + 16*Math.pow(Math.sin(t),3)*r*fsx,
+              y: fcy - (13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))*r*fsy
+            });
+          }
+        }
 
-      for (let i = 0; i < total; i++) {
-        const p = chosen[i];
-        const sz = photoSize * (0.85 + Math.random() * 0.25);
-        const rot = (Math.random() - 0.5) * 20;
-        const img = document.createElement('img');
-        img.className = 'gallery-photo';
-        img.style.cssText = 'left:'+(p.x-sz/2)+'px;top:'+(p.y-sz/2)+'px;width:'+sz+'px;height:'+sz+'px;transform:rotate('+rot+'deg);z-index:'+i+';';
-        img.dataset.src = PHOTOS[i % PHOTOS.length];
+        // === 创建img ===
+        var fragment = document.createDocumentFragment();
+        var total = chosen.length;
 
-        img.onload = function() {
-          this.classList.add('shown');
-          galleryLoaded++;
-          if (galleryLoaded >= total && loadingEl) loadingEl.style.display = 'none';
-        };
-        img.onerror = function() {
-          galleryLoaded++;
-          if (galleryLoaded >= total && loadingEl) loadingEl.style.display = 'none';
-        };
-        img.addEventListener('click', function(e) {
-          e.stopPropagation();
-          openLightbox(this.dataset.src);
-        });
-        fragment.appendChild(img);
-      }
+        for (var i = 0; i < total; i++) {
+          var p = chosen[i];
+          var sz = photoSize * (0.85 + Math.random() * 0.25);
+          var rot = (Math.random() - 0.5) * 20;
+          var img = document.createElement('img');
+          img.className = 'gallery-photo';
+          img.style.cssText = 'left:'+(p.x-sz/2)+'px;top:'+(p.y-sz/2)+'px;width:'+sz+'px;height:'+sz+'px;transform:rotate('+rot+'deg);z-index:'+i+';';
+          img.dataset.src = PHOTOS[i % PHOTOS.length];
+          img.onload = function() {
+            this.classList.add('shown');
+            galleryLoaded++;
+            if (galleryLoaded >= total && loadingEl) loadingEl.style.display = 'none';
+          };
+          img.onerror = function() {
+            galleryLoaded++;
+            if (galleryLoaded >= total && loadingEl) loadingEl.style.display = 'none';
+          };
+          img.addEventListener('click', function(e) {
+            e.stopPropagation();
+            openLightbox(this.dataset.src);
+          });
+          fragment.appendChild(img);
+        }
 
-      if (total === 0 && loadingEl) loadingEl.style.display = 'none';
-      container.appendChild(fragment);
+        if (total === 0 && loadingEl) loadingEl.style.display = 'none';
+        container.appendChild(fragment);
 
-      // 分批加载
-      let batchIdx = 0;
-      const BATCH = 8;
-      function loadBatch() {
-        const imgs = container.querySelectorAll('.gallery-photo');
-        const s = batchIdx * BATCH, e = Math.min(s + BATCH, imgs.length);
-        for (let j = s; j < e; j++) imgs[j].src = imgs[j].dataset.src;
-        batchIdx++;
-        if (batchIdx * BATCH < imgs.length) setTimeout(loadBatch, 40);
-      }
-      loadBatch();
+        // 分批加载
+        var batchIdx = 0, BATCH = 8;
+        function loadBatch() {
+          var imgs = container.querySelectorAll('.gallery-photo');
+          var s = batchIdx * BATCH, e = Math.min(s + BATCH, imgs.length);
+          for (var j = s; j < e; j++) imgs[j].src = imgs[j].dataset.src;
+          batchIdx++;
+          if (batchIdx * BATCH < imgs.length) setTimeout(loadBatch, 40);
+        }
+        loadBatch();
+      }, 100);
     }
 
     // ========== 灯箱 ==========
