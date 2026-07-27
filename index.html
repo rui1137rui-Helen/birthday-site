@@ -1262,62 +1262,54 @@
       var ch = window.innerHeight * 0.86;
       if (cw < 200 || ch < 200) { galleryBuilt = false; setTimeout(buildGallery, 100); return; }
 
-      var photoSize = Math.round(Math.min(44, Math.max(32, Math.sqrt(cw * ch * 0.45 / PHOTOS.length))));
-      var minDist = photoSize * 1.5;
+      var photoSize = Math.round(Math.min(44, Math.max(32, Math.sqrt(cw * ch * 0.4 / PHOTOS.length))));
+      var minDist = photoSize * 1.55;
 
-      // === 创建临时可见 canvas 来渲染形状 ===
+      // 离屏 canvas — 不插入 DOM，纯内存绘制+采样
       var tmpCanvas = document.createElement('canvas');
-      tmpCanvas.style.cssText = 'position:absolute;top:0;left:0;width:'+cw+'px;height:'+ch+'px;z-index:10;';
       tmpCanvas.width = cw;
       tmpCanvas.height = ch;
-      container.appendChild(tmpCanvas);
-
       var ctx = tmpCanvas.getContext('2d');
       ctx.fillStyle = '#fff';
       ctx.fillRect(0, 0, cw, ch);
-      ctx.fillStyle = '#000';
-      ctx.strokeStyle = '#000';
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
+      ctx.fillStyle = ctx.strokeStyle = '#000';
+      ctx.lineCap = ctx.lineJoin = 'round';
 
       var colW = cw * 0.29;
       var gap = cw * 0.015;
-      var totalW = colW * 3 + gap * 2;
-      var left = (cw - totalW) / 2;
-      var shapeH = ch * 0.76;
-      var top = (ch - shapeH) / 2;
-      var thick = Math.round(colW * 0.25);  // 很粗的笔画
+      var left = (cw - colW * 3 - gap * 2) / 2;
+      var hh = ch * 0.74;
+      var topY = (ch - hh) / 2;
+      var thick = Math.round(colW * 0.32);
+
+      var bx1 = left, bx2 = left + colW + gap, bx3 = left + (colW + gap) * 2;
+      var cx1 = bx1 + colW/2, cx2 = bx2 + colW/2, cx3 = bx3 + colW/2;
+      var cy = topY + hh/2;
+
+      // "2"
+      var wc = colW * 0.82, hc = hh * 0.88, r2 = wc * 0.44;
       ctx.lineWidth = thick;
-
-      // 为了填充够厚，fill+stroke 双重绘制
-      var x1 = left, x2 = left + colW + gap, x3 = left + (colW+gap)*2;
-      var cx1 = x1 + colW/2, cx2 = x2 + colW/2, cx3 = x3 + colW/2;
-      var cy = top + shapeH/2;
-
-      // === "2" ===  使用粗线路径 + 填充笔画形状
-      var wc = colW * 0.88, hc = shapeH * 0.9;
-      var r2 = wc * 0.44;
       ctx.beginPath();
-      ctx.moveTo(x1 + thick*0.5, top + thick*0.5);
-      ctx.lineTo(x1 + wc - r2, top + thick*0.5);
-      ctx.arcTo(x1 + wc, top + thick*0.5, x1 + wc, top + r2, r2);
-      ctx.lineTo(x1 + wc, top + hc * 0.53);
-      ctx.lineTo(x1 + thick*0.3, top + hc - thick*0.5);
-      ctx.lineTo(x1 + wc * 0.85, top + hc - thick*0.5);
+      ctx.moveTo(bx1 + colW*0.09, topY + thick*0.5);
+      ctx.lineTo(bx1 + colW*0.09 + wc - r2, topY + thick*0.5);
+      ctx.arcTo(bx1 + colW*0.09 + wc, topY + thick*0.5, bx1 + colW*0.09 + wc, topY + r2, r2);
+      ctx.lineTo(bx1 + colW*0.09 + wc, topY + hc * 0.54);
+      ctx.lineTo(bx1 + colW*0.09 + thick*0.15, topY + hc - thick*0.5);
+      ctx.lineTo(bx1 + colW*0.09 + wc * 0.78, topY + hc - thick*0.5);
       ctx.stroke();
 
-      // === "0" === 粗线椭圆
+      // "0"
       ctx.beginPath();
-      ctx.ellipse(cx2, cy, (colW*0.7-thick)/2, (shapeH-thick)/2, 0, 0, Math.PI*2);
+      ctx.ellipse(cx2, cy, (colW*0.68 - thick)/2, (hh*0.92 - thick)/2, 0, 0, Math.PI*2);
       ctx.stroke();
 
-      // === "❤️" === 填充+描边
-      var hs = Math.min(colW, shapeH) / 36;
-      ctx.lineWidth = thick * 0.55;
+      // "❤️"
+      var hs = Math.min(colW * 0.95, hh * 0.92) / 37;
+      ctx.lineWidth = thick * 0.5;
       ctx.beginPath();
       for (var t = 0; t <= Math.PI*2; t += 0.01) {
         var px = cx3 + 16*Math.pow(Math.sin(t),3)*hs;
-        var py = cy - (13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))*hs + hc * 0.02;
+        var py = cy - (13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))*hs;
         t === 0 ? ctx.moveTo(px,py) : ctx.lineTo(px,py);
       }
       ctx.closePath();
@@ -1325,35 +1317,41 @@
       ctx.lineWidth = thick * 0.5;
       ctx.stroke();
 
-      // === 等待浏览器渲染后采样 ===
-      setTimeout(function() {
-        var imageData = ctx.getImageData(0, 0, cw, ch);
-        var pixels = imageData.data;
-        var allPts = [];
-
-        // 采样黑色像素
-        for (var y = 2; y < ch - 2; y += 2) {
-          for (var x = 2; x < cw - 2; x += 2) {
-            var idx = (y * cw + x) * 4;
-            // R < 128 即黑色/深色像素
-            if (pixels[idx] < 128) allPts.push({x: x, y: y});
-          }
+      // 纯内存采样 — canvas 未插入 DOM 也能 getImageData
+      var imageData = ctx.getImageData(0, 0, cw, ch);
+      var pixels = imageData.data;
+      var allPts = [];
+      for (var y = 2; y < ch - 2; y += 3) {
+        for (var x = 2; x < cw - 2; x += 3) {
+          if (pixels[(y * cw + x) * 4] < 100) allPts.push({x: x, y: y});
         }
+      }
 
-        // 移除临时canvas
-        container.removeChild(tmpCanvas);
+      // 洗牌
+      for (var i = allPts.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var tmpPt = allPts[i]; allPts[i] = allPts[j]; allPts[j] = tmpPt;
+      }
 
-        // === 贪心选不重叠的点 ===
-        for (var i = allPts.length - 1; i > 0; i--) {
-          var j = Math.floor(Math.random() * (i + 1));
-          var tmp = allPts[i]; allPts[i] = allPts[j]; allPts[j] = tmp;
+      // 贪心选不重叠的点
+      var chosen = [];
+      var md2 = minDist * minDist;
+      for (var i = 0; i < allPts.length && chosen.length < PHOTOS.length; i++) {
+        var p = allPts[i];
+        if (p.x < 8 || p.x > cw-8 || p.y < 8 || p.y > ch-8) continue;
+        var ok = true;
+        for (var j = 0; j < chosen.length; j++) {
+          var dx = p.x - chosen[j].x, dy = p.y - chosen[j].y;
+          if (dx*dx + dy*dy < md2) { ok = false; break; }
         }
+        if (ok) chosen.push(p);
+      }
 
-        var chosen = [];
-        var md2 = minDist * minDist;
+      if (chosen.length < PHOTOS.length) {
+        md2 = (minDist*0.55)*(minDist*0.55);
         for (var i = 0; i < allPts.length && chosen.length < PHOTOS.length; i++) {
           var p = allPts[i];
-          if (p.x < 5 || p.x > cw-5 || p.y < 5 || p.y > ch-5) continue;
+          if (p.x < 3 || p.x > cw-3 || p.y < 3 || p.y > ch-3) continue;
           var ok = true;
           for (var j = 0; j < chosen.length; j++) {
             var dx = p.x - chosen[j].x, dy = p.y - chosen[j].y;
@@ -1361,77 +1359,38 @@
           }
           if (ok) chosen.push(p);
         }
+      }
 
-        // 不够 → 松一点
-        if (chosen.length < PHOTOS.length) {
-          md2 = (minDist*0.65) * (minDist*0.65);
-          for (var i = 0; i < allPts.length && chosen.length < PHOTOS.length; i++) {
-            var p = allPts[i];
-            if (p.x < 3 || p.x > cw-3 || p.y < 3 || p.y > ch-3) continue;
-            var ok = true;
-            for (var j = 0; j < chosen.length; j++) {
-              var dx = p.x - chosen[j].x, dy = p.y - chosen[j].y;
-              if (dx*dx + dy*dy < md2) { ok = false; break; }
-            }
-            if (ok) chosen.push(p);
-          }
+      // fallback
+      if (chosen.length < 10) {
+        chosen = [];
+        for (var i = 0; i < PHOTOS.length; i++) {
+          var tt = Math.random()*Math.PI*2, rr = Math.sqrt(Math.random());
+          chosen.push({ x: cw/2+16*Math.pow(Math.sin(tt),3)*rr*cw/38, y: ch/2-(13*Math.cos(tt)-5*Math.cos(2*tt)-2*Math.cos(3*tt)-Math.cos(4*tt))*rr*ch/34 });
         }
+      }
 
-        // fallback
-        if (chosen.length < 10) {
-          chosen = [];
-          var fcx = cw/2, fcy = ch/2, fsx = cw/38, fsy = ch/34;
-          for (var i = 0; i < PHOTOS.length; i++) {
-            var t = Math.random()*Math.PI*2, r = Math.sqrt(Math.random());
-            chosen.push({
-              x: fcx + 16*Math.pow(Math.sin(t),3)*r*fsx,
-              y: fcy - (13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))*r*fsy
-            });
-          }
-        }
+      // 创建 img
+      var fragment = document.createDocumentFragment();
+      var total = chosen.length;
+      for (var i = 0; i < total; i++) {
+        var p = chosen[i];
+        var sz = photoSize * (0.85 + Math.random()*0.25);
+        var rot = (Math.random()-0.5)*20;
+        var img = document.createElement('img');
+        img.className = 'gallery-photo';
+        img.style.cssText = 'left:'+(p.x-sz/2)+'px;top:'+(p.y-sz/2)+'px;width:'+sz+'px;height:'+sz+'px;transform:rotate('+rot+'deg);z-index:'+i+';';
+        img.dataset.src = PHOTOS[i % PHOTOS.length];
+        img.onload = function() { this.classList.add('shown'); galleryLoaded++; if (galleryLoaded>=total&&loadingEl) loadingEl.style.display='none'; };
+        img.onerror = function() { galleryLoaded++; if (galleryLoaded>=total&&loadingEl) loadingEl.style.display='none'; };
+        img.addEventListener('click', function(e) { e.stopPropagation(); openLightbox(this.dataset.src); });
+        fragment.appendChild(img);
+      }
+      if (total===0&&loadingEl) loadingEl.style.display='none';
+      container.appendChild(fragment);
 
-        // === 创建img ===
-        var fragment = document.createDocumentFragment();
-        var total = chosen.length;
-
-        for (var i = 0; i < total; i++) {
-          var p = chosen[i];
-          var sz = photoSize * (0.85 + Math.random() * 0.25);
-          var rot = (Math.random() - 0.5) * 20;
-          var img = document.createElement('img');
-          img.className = 'gallery-photo';
-          img.style.cssText = 'left:'+(p.x-sz/2)+'px;top:'+(p.y-sz/2)+'px;width:'+sz+'px;height:'+sz+'px;transform:rotate('+rot+'deg);z-index:'+i+';';
-          img.dataset.src = PHOTOS[i % PHOTOS.length];
-          img.onload = function() {
-            this.classList.add('shown');
-            galleryLoaded++;
-            if (galleryLoaded >= total && loadingEl) loadingEl.style.display = 'none';
-          };
-          img.onerror = function() {
-            galleryLoaded++;
-            if (galleryLoaded >= total && loadingEl) loadingEl.style.display = 'none';
-          };
-          img.addEventListener('click', function(e) {
-            e.stopPropagation();
-            openLightbox(this.dataset.src);
-          });
-          fragment.appendChild(img);
-        }
-
-        if (total === 0 && loadingEl) loadingEl.style.display = 'none';
-        container.appendChild(fragment);
-
-        // 分批加载
-        var batchIdx = 0, BATCH = 8;
-        function loadBatch() {
-          var imgs = container.querySelectorAll('.gallery-photo');
-          var s = batchIdx * BATCH, e = Math.min(s + BATCH, imgs.length);
-          for (var j = s; j < e; j++) imgs[j].src = imgs[j].dataset.src;
-          batchIdx++;
-          if (batchIdx * BATCH < imgs.length) setTimeout(loadBatch, 40);
-        }
-        loadBatch();
-      }, 100);
+      var batchIdx=0,B=8;
+      (function lb(){ var imgs=container.querySelectorAll('.gallery-photo'); var s=batchIdx*B,e=Math.min(s+B,imgs.length); for(var j=s;j<e;j++)imgs[j].src=imgs[j].dataset.src; batchIdx++; if(batchIdx*B<imgs.length)setTimeout(lb,40); })();
     }
 
     // ========== 灯箱 ==========
