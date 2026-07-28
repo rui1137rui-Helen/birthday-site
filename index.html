@@ -526,10 +526,14 @@
       position: absolute;
       top: 50%; left: 50%;
       transform: translate(-50%, -50%);
-      color: rgba(255,255,255,0.7);
-      font-size: 1rem;
+      font-size: 3rem;
       z-index: 5;
       pointer-events: none;
+      animation: emojiPulse 0.8s ease-in-out infinite;
+    }
+    @keyframes emojiPulse {
+      0%, 100% { transform: translate(-50%, -50%) scale(1); }
+      50% { transform: translate(-50%, -50%) scale(1.25); }
     }
 
     /* ========== 灯箱（点击放大） ========== */
@@ -811,10 +815,20 @@
 
       if (pageId === 'gallery-page') {
         const gh = document.getElementById('gallery-heart');
-        if (gh) gh.innerHTML = '<p class="gallery-loading" id="gallery-loading">💕 加载中...</p>';
+        if (gh) gh.innerHTML = '<p class="gallery-loading" id="gallery-loading">💌</p>';
         galleryBuilt = false;
         galleryLoaded = 0;
+        clearInterval(window._galleryEmojiTimer);
+        var emojis = ['💌','💕','💗','💖','💝','✨','🌸'];
+        var emojiIdx = 0;
+        window._galleryEmojiTimer = setInterval(function() {
+          emojiIdx = (emojiIdx + 1) % emojis.length;
+          var el = document.getElementById('gallery-loading');
+          if (el) el.textContent = emojis[emojiIdx];
+        }, 400);
         setTimeout(buildGallery, 150);
+      } else {
+        clearInterval(window._galleryEmojiTimer);
       }
 
       if (pageId === 'result-a-page') startFloatingHearts('A');
@@ -1371,7 +1385,7 @@
       // ===== 放照片 =====
       var frag=document.createDocumentFragment(),total=chosen.length;
       for(var i=0;i<total;i++){var p=chosen[i],sz=pSizeLog*scale*(0.85+Math.random()*0.25),rot=(Math.random()-0.5)*20;var img=document.createElement('img');img.className='gallery-photo';img.decoding='async';img.style.cssText='left:'+(p.x-sz/2)+'px;top:'+(p.y-sz/2)+'px;width:'+sz+'px;height:'+sz+'px;transform:rotate('+rot+'deg);z-index:'+i+';';img.dataset.src=PHOTOS[i%PHOTOS.length];img.addEventListener('click',function(e){e.stopPropagation();openLightbox(this.dataset.src);});frag.appendChild(img);}
-      if(total===0&&L)L.style.display='none';C.appendChild(frag);
+      if(total===0){clearInterval(window._galleryEmojiTimer);if(L)L.style.display='none';}C.appendChild(frag);
       // ===== 分批设 src（每批6张隔20ms），避免同时解码118张卡死主线程 =====
       var allImgs = C.querySelectorAll('.gallery-photo'), totalImgs = allImgs.length;
       var loadedCount = 0, batchSize = 6, idx = 0;
@@ -1379,13 +1393,14 @@
         var end = Math.min(idx + batchSize, totalImgs);
         for (var j = idx; j < end; j++) {
           var el = allImgs[j];
-          el.onload = function() { this.classList.add('shown'); loadedCount++; if (loadedCount >= totalImgs && L) L.style.display = 'none'; };
-          el.onerror = function() { this.classList.add('shown'); loadedCount++; if (loadedCount >= totalImgs && L) L.style.display = 'none'; };
+          el.onload = function() { this.classList.add('shown'); loadedCount++; if (loadedCount >= totalImgs) { clearInterval(window._galleryEmojiTimer); if (L) L.style.display = 'none'; } };
+          el.onerror = function() { this.classList.add('shown'); loadedCount++; if (loadedCount >= totalImgs) { clearInterval(window._galleryEmojiTimer); if (L) L.style.display = 'none'; } };
           el.src = el.dataset.src;
         }
         idx = end;
         if (idx < totalImgs) setTimeout(setNextBatch, 20);
         else setTimeout(function() {
+          clearInterval(window._galleryEmojiTimer);
           if (L) L.style.display = 'none';
         }, 3000);
       }
