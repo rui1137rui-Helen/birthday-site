@@ -1289,15 +1289,15 @@
       if (pSizeLog < 30) pSizeLog = 30;
       if (pSizeLog > 52) pSizeLog = 52;
 
-      // 三列 — 和参考图等比例
-      var colW = FW * 0.31, gap = FW * 0.015;
+      // 三列 — 形状更宽,填满
+      var colW = FW * 0.32, gap = FW * 0.012;
       var totalW = colW*3 + gap*2, left = (FW-totalW)/2;
-      var colH = FH * 0.92, top = (FH-colH)/2;  // 更高,几乎填满
+      var colH = FH * 0.86, top = (FH-colH)/2;
 
       var cx1 = left + colW/2, cx2 = left + colW + gap + colW/2, cx3 = left + (colW+gap)*2 + colW/2;
       var cy = top + colH/2;
 
-      var spacing = pSizeLog * 1.1;
+      var spacing = pSizeLog * 0.85;  // 紧凑排列
 
       // ===== 辅助函数 =====
       function pathSamples(pts, sp) {
@@ -1322,20 +1322,21 @@
         return res;
       }
 
-      // ===== "2": 参考图比例——非常高,顶横→弧→长对角→底横 =====
-      var sw2 = colW*0.88, sh2 = colH*0.94;  // 非常高
-      var xL = cx1-sw2/2, xR = cx1+sw2/2, yT = top+colH*0.03, yB = top+colH*0.97;
-      var r2 = sw2*0.44;  // 更大的弧
+      // ===== "2": 宽而饱满,顶横→大弧→对角线→底横 =====
+      var sw2 = colW*0.92, sh2 = colH*0.82;  // 宽:高=0.92:0.82=1.12, 不瘦
+      var xL = cx1-sw2/2, xR = cx1+sw2/2;
+      var yT = cy-sh2/2, yB = cy+sh2/2;
+      var r2 = sw2*0.45;  // 大弧
       var aCX = xR-r2, aCY = yT+r2;
       var path2 = [].concat(
-        pathSamples([[xL,yT],[aCX, yT]], spacing),                        // top bar
-        arcSamples(aCX, aCY, r2, -Math.PI/2, 0, spacing),                // arc (90°)
-        pathSamples([[xR, yT+r2],[xL+pSizeLog*0.5, yB-pSizeLog*0.5]],spacing), // long diagonal
-        pathSamples([[xL+pSizeLog*0.5, yB],[xR*0.82, yB]],spacing)       // bottom bar
+        pathSamples([[xL,yT],[aCX, yT]], spacing),                      // top bar
+        arcSamples(aCX,aCY,r2,-Math.PI/2,0,spacing),                    // arc
+        pathSamples([[xR, yT+r2],[xL+pSizeLog*0.4, yB-pSizeLog*0.4]],spacing), // diagonal
+        pathSamples([[xL+pSizeLog*0.4, yB],[xR*0.84, yB]],spacing)      // bottom bar
       );
 
-      // ===== "0": 参考图——干净椭圆环（居中,接近圆形） =====
-      var rx0=colW*0.38, ry0=colH*0.44;
+      // ===== "0": 椭圆环,接近正圆 =====
+      var rx0=colW*0.38, ry0=colH*0.42;
       var path0 = [];
       var circum0 = Math.PI * (3*(rx0+ry0)/2 - Math.sqrt(rx0*ry0));
       var n0 = Math.floor(circum0/spacing);
@@ -1344,15 +1345,14 @@
         path0.push({x:cx2+Math.cos(ang)*rx0+(Math.random()-0.5)*spacing*0.12, y:cy+Math.sin(ang)*ry0+(Math.random()-0.5)*spacing*0.12});
       }
 
-      // ===== 分配照片: 2轮廓, 0轮廓, 心填充 =====
+      // ===== 分配照片 =====
       var total = PHOTOS.length;
-      var need2 = Math.min(path2.length, Math.floor(total*0.20));
-      var need0 = Math.min(path0.length, Math.floor(total*0.20));
-      var needH = total - need2 - need0;
-      // 等距取点
-      var chosen2=[],chosen0=[];
-      for(var i=0;i<need2;i++)chosen2.push(path2[Math.floor(i/need2*path2.length)]);
-      for(var i=0;i<need0;i++)chosen0.push(path0[Math.floor(i/need0*path0.length)]);
+      // "2"和"0"各用约22%照片,但是path2/path0可能没那么长,用多少算多少
+      var target2 = Math.floor(total*0.22), target0 = Math.floor(total*0.22);
+      // 直接路径上每个采样点都用（间距已经够紧了）
+      var chosen2 = path2.slice(0, Math.min(path2.length, target2));
+      var chosen0 = path0.slice(0, Math.min(path0.length, target0));
+      var needH = total - chosen2.length - chosen0.length;
 
       // ===== "❤️" 填充 =====
       var hs = Math.min(colW*1.05, colH*1.02)/36;
