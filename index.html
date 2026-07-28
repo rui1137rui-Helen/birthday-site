@@ -1297,62 +1297,53 @@
       var cx1 = left + colW/2, cx2 = left + colW + gap + colW/2, cx3 = left + (colW+gap)*2 + colW/2;
       var cy = top + colH/2;
 
-      var spacing = pSizeLog * 0.85;  // 紧凑排列
+      var spacing = pSizeLog * 0.75;  // 极其紧凑
 
-      // ===== 辅助函数 =====
-      function pathSamples(pts, sp) {
-        var res = [];
-        for (var s = 0; s < pts.length - 1; s++) {
-          var sx = pts[s][0], sy = pts[s][1], ex = pts[s+1][0], ey = pts[s+1][1];
-          var dx = ex-sx, dy = ey-sy, len = Math.sqrt(dx*dx+dy*dy) || 1;
-          var n = Math.max(3, Math.floor(len / sp));
-          for (var i = 0; i <= n; i++) {
-            var f = i / n;
-            res.push({x: sx+dx*f + (Math.random()-0.5)*sp*0.12, y: sy+dy*f + (Math.random()-0.5)*sp*0.12});
-          }
-        }
+      // ===== 辅助：给定线段+目标点数,返回等距坐标 =====
+      function fillLine(sx,sy,ex,ey,n) {
+        var res=[], dx=ex-sx, dy=ey-sy;
+        for(var i=0;i<n;i++){var f=i/(n-1||1);res.push({x:sx+dx*f+Math.random()*2-1,y:sy+dy*f+Math.random()*2-1});}
         return res;
       }
-      function arcSamples(cx, cy, r, from, to, sp) {
-        var arcLen = Math.abs(to-from)*r, n = Math.max(1, Math.floor(arcLen/sp)), res = [];
-        for (var i = 0; i <= n; i++) {
-          var a = from + (to-from)*i/n;
-          res.push({x: cx+Math.cos(a)*r + (Math.random()-0.5)*sp*0.12, y: cy+Math.sin(a)*r + (Math.random()-0.5)*sp*0.12});
-        }
+      function fillArc(cx,cy,r,from,to,n){
+        var res=[];
+        for(var i=0;i<n;i++){var a=from+(to-from)*i/(n-1||1);res.push({x:cx+Math.cos(a)*r+Math.random()*2-1,y:cy+Math.sin(a)*r+Math.random()*2-1});}
         return res;
       }
 
-      // ===== "2": 宽而饱满,顶横→大弧→对角线→底横 =====
-      var sw2 = colW*0.92, sh2 = colH*0.82;  // 宽:高=0.92:0.82=1.12, 不瘦
-      var xL = cx1-sw2/2, xR = cx1+sw2/2;
-      var yT = cy-sh2/2, yB = cy+sh2/2;
-      var r2 = sw2*0.45;  // 大弧
-      var aCX = xR-r2, aCY = yT+r2;
-      var path2 = [].concat(
-        pathSamples([[xL,yT],[aCX, yT]], spacing),                      // top bar
-        arcSamples(aCX,aCY,r2,-Math.PI/2,0,spacing),                    // arc
-        pathSamples([[xR, yT+r2],[xL+pSizeLog*0.4, yB-pSizeLog*0.4]],spacing), // diagonal
-        pathSamples([[xL+pSizeLog*0.4, yB],[xR*0.84, yB]],spacing)      // bottom bar
+      // ===== 按线段长度比例分配照片 =====
+      var total = PHOTOS.length;
+      var need2 = Math.floor(total*0.22); // ~26张给2
+      var need0 = Math.floor(total*0.22); // ~26张给0
+      var needH = total - need2 - need0;   // ~66张给心
+
+      // "2"的四段路径长度
+      var sw2 = colW*0.92, sh2 = colH*0.82;
+      var xL = cx1-sw2/2, xR = cx1+sw2/2, yT = cy-sh2/2, yB = cy+sh2/2;
+      var r2 = sw2*0.45, aCX = xR-r2, aCY = yT+r2;
+      // 各段比例: 顶横:弧:对角:底横
+      var segLens = [
+        (aCX-xL),                      // top
+        (Math.PI/2*r2),                // arc (90°)
+        Math.sqrt((xL-xR)*(xL-xR) + (yB-yT-r2)*(yB-yT-r2)),  // diagonal
+        (xR*0.84 - xL)                 // bottom
+      ];
+      var totalLen = segLens[0]+segLens[1]+segLens[2]+segLens[3];
+      var nums = segLens.map(function(l){return Math.max(1,Math.round(need2*l/totalLen));});
+      // 微调使总和=need2
+      { var diff=need2-(nums[0]+nums[1]+nums[2]+nums[3]); if(diff>0)nums[2]+=diff; else if(diff<0)nums[3]+=diff; if(nums[3]<1)nums[3]=1; if(nums[2]<1)nums[2]=1; }
+
+      var chosen2 = [].concat(
+        fillLine(xL,yT, aCX,yT, nums[0]),
+        fillArc(aCX,aCY,r2,-Math.PI/2,0, nums[1]),
+        fillLine(xR, yT+r2, xL+pSizeLog*0.5, yB-pSizeLog*0.5, nums[2]),
+        fillLine(xL+pSizeLog*0.5, yB, xR*0.84, yB, nums[3])
       );
 
-      // ===== "0": 椭圆环,接近正圆 =====
+      // "0" 椭圆环
       var rx0=colW*0.38, ry0=colH*0.42;
-      var path0 = [];
-      var circum0 = Math.PI * (3*(rx0+ry0)/2 - Math.sqrt(rx0*ry0));
-      var n0 = Math.floor(circum0/spacing);
-      for (var i=0;i<=n0;i++){
-        var ang=i/n0*Math.PI*2;
-        path0.push({x:cx2+Math.cos(ang)*rx0+(Math.random()-0.5)*spacing*0.12, y:cy+Math.sin(ang)*ry0+(Math.random()-0.5)*spacing*0.12});
-      }
-
-      // ===== 分配照片 =====
-      var total = PHOTOS.length;
-      // "2"和"0"各用约22%照片,但是path2/path0可能没那么长,用多少算多少
-      var target2 = Math.floor(total*0.22), target0 = Math.floor(total*0.22);
-      // 直接路径上每个采样点都用（间距已经够紧了）
-      var chosen2 = path2.slice(0, Math.min(path2.length, target2));
-      var chosen0 = path0.slice(0, Math.min(path0.length, target0));
-      var needH = total - chosen2.length - chosen0.length;
+      var chosen0 = [];
+      for(var i=0;i<need0;i++){var a=i/need0*Math.PI*2;chosen0.push({x:cx2+Math.cos(a)*rx0+Math.random()*2-1,y:cy+Math.sin(a)*ry0+Math.random()*2-1});}
 
       // ===== "❤️" 填充 =====
       var hs = Math.min(colW*1.05, colH*1.02)/36;
