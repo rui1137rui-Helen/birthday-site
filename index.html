@@ -578,11 +578,11 @@
     }
     .gallery-hint {
       position: fixed;
-      bottom: 60px;
+      bottom: 74px;
       right: 24px;
       z-index: 100;
       color: rgba(255,255,255,0.65);
-      font-size: 0.75rem;
+      font-size: 0.82rem;
       letter-spacing: 1px;
       pointer-events: none;
     }
@@ -866,7 +866,8 @@
         // 照片墙显示提示
         if (pageId === 'gallery-page') {
           hint.style.display = '';
-          hint.style.color = '#555';
+          hint.style.color = '#666';
+          hint.style.fontSize = '0.82rem';
         } else {
           hint.style.display = 'none';
         }
