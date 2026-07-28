@@ -71,6 +71,19 @@
       z-index: 0;
     }
 
+    /* ========== 登录页双栏布局 ========== */
+    #login-page { flex-direction: row; gap: 40px; padding: 30px; }
+
+    .login-left-img {
+      max-width: 42%;
+      width: auto;
+      height: auto;
+      max-height: 35vh;
+      object-fit: contain;
+      animation: fadeInUp 0.8s ease;
+      filter: drop-shadow(0 8px 24px rgba(0,0,0,0.15));
+    }
+
     /* ========== 登录卡片 ========== */
     .login-card {
       background: rgba(255,255,255,0.95);
@@ -586,6 +599,10 @@
     }
 
     /* ========== 响应式 ========== */
+    @media (max-width: 768px) {
+      #login-page { flex-direction: column; gap: 20px; }
+      .login-left-img { max-width: 70%; max-height: 20vh; }
+    }
     @media (max-width: 480px) {
       .login-card, .letter-card, .quiz-card {
         padding: 30px 20px;
@@ -610,6 +627,7 @@
 
   <!-- ==================== 第0页：登录 ==================== -->
   <div class="page active" id="login-page">
+    <img class="login-left-img" src="photos/417f88b06e3e7fd6fe8fc022a9f65ab3.jpg" alt="生日快乐" />
     <div class="login-card">
       <h1>🎂</h1>
       <p class="subtitle">请输入密码以继续</p>
