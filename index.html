@@ -1255,7 +1255,7 @@
 
     // ===== 预加载：<link rel="prefetch"> + 隐藏 img，页面打开立即全部开始下载 =====
     (function preloadAll() {
-      // <link rel="prefetch"> 通知浏览器在空闲时后台下载全部照片
+      // prefetch 通知浏览器后台下载
       var linkFrag = document.createDocumentFragment();
       for (var i = 0; i < PHOTOS.length; i++) {
         var lnk = document.createElement('link');
@@ -1265,10 +1265,14 @@
         linkFrag.appendChild(lnk);
       }
       document.head.appendChild(linkFrag);
-      // 双保险：同时用 Image 对象拉取
-      for (var j = 0; j < PHOTOS.length; j++) {
-        (new Image()).src = PHOTOS[j];
+      // 分批 Image() 预加载,每批8张,避免118个请求同时轰炸
+      var pi = 0;
+      function preloadBatch() {
+        var end = Math.min(pi + 8, PHOTOS.length);
+        for (; pi < end; pi++) (new Image()).src = PHOTOS[pi];
+        if (pi < PHOTOS.length) setTimeout(preloadBatch, 30);
       }
+      preloadBatch();
     })();
 
     function buildGallery() {
@@ -1346,10 +1350,10 @@
       var chosen0 = [];
       for(var i=0;i<need0;i++){var a=i/need0*Math.PI*2;chosen0.push({x:cx2+Math.cos(a)*rx0+Math.random()*2-1,y:cy+Math.sin(a)*ry0+Math.random()*2-1});}
 
-      // ===== "❤️" 填充 =====
+      // ===== "❤️" 填充（减少点数避免卡顿） =====
       var hs = Math.min(colW*1.05, colH*1.02)/36;
       var heartPts = [];
-      for(var i=0;i<20000;i++){var t_=Math.random()*Math.PI*2,r_=Math.pow(Math.random(),0.5);var x=cx3+16*Math.pow(Math.sin(t_),3)*hs*r_;var y=cy-(13*Math.cos(t_)-5*Math.cos(2*t_)-2*Math.cos(3*t_)-Math.cos(4*t_))*hs*r_;if(x>4&&x<FW-4&&y>4&&y<FH-4)heartPts.push({x:x,y:y});}
+      for(var i=0;i<6000;i++){var t_=Math.random()*Math.PI*2,r_=Math.pow(Math.random(),0.5);var x=cx3+16*Math.pow(Math.sin(t_),3)*hs*r_;var y=cy-(13*Math.cos(t_)-5*Math.cos(2*t_)-2*Math.cos(3*t_)-Math.cos(4*t_))*hs*r_;if(x>4&&x<FW-4&&y>4&&y<FH-4)heartPts.push({x:x,y:y});}
       for(var i=heartPts.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=heartPts[i];heartPts[i]=heartPts[j];heartPts[j]=t;}
       var chosenH=[], md2H=spacing*spacing;
       for(var i=0;i<heartPts.length&&chosenH.length<needH;i++){var p=heartPts[i];if(p.x<6||p.x>FW-6||p.y<6||p.y>FH-6)continue;var ok=true;for(var j=0;j<chosenH.length;j++){var dx=p.x-chosenH[j].x,dy=p.y-chosenH[j].y;if(dx*dx+dy*dy<md2H){ok=false;break;}}if(ok)chosenH.push(p);}
@@ -1366,23 +1370,26 @@
 
       // ===== 放照片 =====
       var frag=document.createDocumentFragment(),total=chosen.length;
-      for(var i=0;i<total;i++){var p=chosen[i],sz=pSizeLog*scale*(0.85+Math.random()*0.25),rot=(Math.random()-0.5)*20;var img=document.createElement('img');img.className='gallery-photo';img.style.cssText='left:'+(p.x-sz/2)+'px;top:'+(p.y-sz/2)+'px;width:'+sz+'px;height:'+sz+'px;transform:rotate('+rot+'deg);z-index:'+i+';';img.dataset.src=PHOTOS[i%PHOTOS.length];img.addEventListener('click',function(e){e.stopPropagation();openLightbox(this.dataset.src);});frag.appendChild(img);}
+      for(var i=0;i<total;i++){var p=chosen[i],sz=pSizeLog*scale*(0.85+Math.random()*0.25),rot=(Math.random()-0.5)*20;var img=document.createElement('img');img.className='gallery-photo';img.decoding='async';img.style.cssText='left:'+(p.x-sz/2)+'px;top:'+(p.y-sz/2)+'px;width:'+sz+'px;height:'+sz+'px;transform:rotate('+rot+'deg);z-index:'+i+';';img.dataset.src=PHOTOS[i%PHOTOS.length];img.addEventListener('click',function(e){e.stopPropagation();openLightbox(this.dataset.src);});frag.appendChild(img);}
       if(total===0&&L)L.style.display='none';C.appendChild(frag);
-      // ===== 一次性设所有 src:图片已预加载缓存,浏览器从缓存秒取 =====
+      // ===== 分批设 src（每批6张隔20ms），避免同时解码118张卡死主线程 =====
       var allImgs = C.querySelectorAll('.gallery-photo'), totalImgs = allImgs.length;
-      var loadedCount = 0;
-      for (var j = 0; j < totalImgs; j++) {
-        var el = allImgs[j];
-        el.onload = function() { this.classList.add('shown'); loadedCount++; if (loadedCount >= totalImgs && L) L.style.display = 'none'; };
-        el.onerror = function() { this.classList.add('shown'); loadedCount++; if (loadedCount >= totalImgs && L) L.style.display = 'none'; };
-        el.src = el.dataset.src;
+      var loadedCount = 0, batchSize = 6, idx = 0;
+      function setNextBatch() {
+        var end = Math.min(idx + batchSize, totalImgs);
+        for (var j = idx; j < end; j++) {
+          var el = allImgs[j];
+          el.onload = function() { this.classList.add('shown'); loadedCount++; if (loadedCount >= totalImgs && L) L.style.display = 'none'; };
+          el.onerror = function() { this.classList.add('shown'); loadedCount++; if (loadedCount >= totalImgs && L) L.style.display = 'none'; };
+          el.src = el.dataset.src;
+        }
+        idx = end;
+        if (idx < totalImgs) setTimeout(setNextBatch, 20);
+        else setTimeout(function() {
+          if (L) L.style.display = 'none';
+        }, 3000);
       }
-      // 超时兜底：5秒后强制显示所有未加载的
-      setTimeout(function() {
-        var all = C.querySelectorAll('.gallery-photo');
-        for (var k = 0; k < all.length; k++) { all[k].classList.add('shown'); all[k].style.opacity = '1'; }
-        if (L) L.style.display = 'none';
-      }, 5000);
+      setNextBatch();
     }
 
     // ========== 灯箱 ==========
