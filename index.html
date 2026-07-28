@@ -1289,18 +1289,17 @@
       if (pSizeLog < 30) pSizeLog = 30;
       if (pSizeLog > 52) pSizeLog = 52;
 
-      // 三列 — 在固定 FW×FH 坐标下计算
-      var colW = FW * 0.30, gap = FW * 0.025;
+      // 三列 — 和参考图等比例
+      var colW = FW * 0.31, gap = FW * 0.015;
       var totalW = colW*3 + gap*2, left = (FW-totalW)/2;
-      var colH = FH * 0.80, top = (FH-colH)/2;
+      var colH = FH * 0.92, top = (FH-colH)/2;  // 更高,几乎填满
 
       var cx1 = left + colW/2, cx2 = left + colW + gap + colW/2, cx3 = left + (colW+gap)*2 + colW/2;
       var cy = top + colH/2;
 
-      var candidates = [];
-      var spacing = pSizeLog * 1.15; // 2和0的照片中心间距
+      var spacing = pSizeLog * 1.1;
 
-      // ===== 辅助：路径均匀取点 =====
+      // ===== 辅助函数 =====
       function pathSamples(pts, sp) {
         var res = [];
         for (var s = 0; s < pts.length - 1; s++) {
@@ -1309,7 +1308,7 @@
           var n = Math.max(3, Math.floor(len / sp));
           for (var i = 0; i <= n; i++) {
             var f = i / n;
-            res.push({x: sx+dx*f + (Math.random()-0.5)*sp*0.15, y: sy+dy*f + (Math.random()-0.5)*sp*0.15});
+            res.push({x: sx+dx*f + (Math.random()-0.5)*sp*0.12, y: sy+dy*f + (Math.random()-0.5)*sp*0.12});
           }
         }
         return res;
@@ -1318,56 +1317,53 @@
         var arcLen = Math.abs(to-from)*r, n = Math.max(1, Math.floor(arcLen/sp)), res = [];
         for (var i = 0; i <= n; i++) {
           var a = from + (to-from)*i/n;
-          res.push({x: cx+Math.cos(a)*r + (Math.random()-0.5)*sp*0.15, y: cy+Math.sin(a)*r + (Math.random()-0.5)*sp*0.15});
+          res.push({x: cx+Math.cos(a)*r + (Math.random()-0.5)*sp*0.12, y: cy+Math.sin(a)*r + (Math.random()-0.5)*sp*0.12});
         }
         return res;
       }
 
-      // ===== "2": 顶横→大圆弧→对角线→底横 =====
-      var sw2 = colW*0.92, sh2 = colH*0.72, r2 = sw2*0.38;
-      var xL = cx1-sw2/2, xR = cx1+sw2/2, yT = cy-sh2/2, yB = cy+sh2/2;
-      var aCX = xR-r2, aCY = yT+r2;                                    // 弧心
-      var arcEndAng = Math.PI/6;                                         // 弧从-90°到+30°,弯过水平
-      var arcEndX = aCX + Math.cos(arcEndAng)*r2, arcEndY = aCY + Math.sin(arcEndAng)*r2;
+      // ===== "2": 参考图比例——非常高,顶横→弧→长对角→底横 =====
+      var sw2 = colW*0.88, sh2 = colH*0.94;  // 非常高
+      var xL = cx1-sw2/2, xR = cx1+sw2/2, yT = top+colH*0.03, yB = top+colH*0.97;
+      var r2 = sw2*0.44;  // 更大的弧
+      var aCX = xR-r2, aCY = yT+r2;
       var path2 = [].concat(
-        pathSamples([[xL,yT],[aCX, yT]], spacing),                       // 顶横
-        arcSamples(aCX, aCY, r2, -Math.PI/2, arcEndAng, spacing),       // 大弧(弯过顶部到右下方)
-        pathSamples([[arcEndX, arcEndY],[xL+pSizeLog, yB-pSizeLog*0.4]],spacing), // 对角线
-        pathSamples([[xL+pSizeLog, yB],[xR*0.85, yB]],spacing)           // 底横
+        pathSamples([[xL,yT],[aCX, yT]], spacing),                        // top bar
+        arcSamples(aCX, aCY, r2, -Math.PI/2, 0, spacing),                // arc (90°)
+        pathSamples([[xR, yT+r2],[xL+pSizeLog*0.5, yB-pSizeLog*0.5]],spacing), // long diagonal
+        pathSamples([[xL+pSizeLog*0.5, yB],[xR*0.82, yB]],spacing)       // bottom bar
       );
 
-      // ===== "0": 椭圆 =====
-      var rx0=sw2*0.38, ry0=sh2*0.46;
+      // ===== "0": 参考图——干净椭圆环（居中,接近圆形） =====
+      var rx0=colW*0.38, ry0=colH*0.44;
       var path0 = [];
-      var circum = Math.PI * (3*(rx0+ry0)/2 - Math.sqrt(rx0*ry0)); // 近似周长
-      var n0 = Math.floor(circum/spacing);
+      var circum0 = Math.PI * (3*(rx0+ry0)/2 - Math.sqrt(rx0*ry0));
+      var n0 = Math.floor(circum0/spacing);
       for (var i=0;i<=n0;i++){
         var ang=i/n0*Math.PI*2;
-        path0.push({x:cx2+Math.cos(ang)*rx0+(Math.random()-0.5)*spacing*0.15, y:cy+Math.sin(ang)*ry0+(Math.random()-0.5)*spacing*0.15});
+        path0.push({x:cx2+Math.cos(ang)*rx0+(Math.random()-0.5)*spacing*0.12, y:cy+Math.sin(ang)*ry0+(Math.random()-0.5)*spacing*0.12});
       }
 
-      // ===== 分配照片: 2, 0, 心 =====
+      // ===== 分配照片: 2轮廓, 0轮廓, 心填充 =====
       var total = PHOTOS.length;
-      var need2 = Math.min(path2.length, Math.floor(total*0.19));
-      var need0 = Math.min(path0.length, Math.floor(total*0.19));
+      var need2 = Math.min(path2.length, Math.floor(total*0.20));
+      var need0 = Math.min(path0.length, Math.floor(total*0.20));
       var needH = total - need2 - need0;
-      // 2: 等距取点
-      var chosen2 = [];
+      // 等距取点
+      var chosen2=[],chosen0=[];
       for(var i=0;i<need2;i++)chosen2.push(path2[Math.floor(i/need2*path2.length)]);
-      // 0: 等距取点
-      var chosen0 = [];
       for(var i=0;i<need0;i++)chosen0.push(path0[Math.floor(i/need0*path0.length)]);
 
-      // "❤️" 填充
-      var hs = Math.min(colW*1.08, colH*0.96)/36;
+      // ===== "❤️" 填充 =====
+      var hs = Math.min(colW*1.05, colH*1.02)/36;
       var heartPts = [];
-      for(var i=0;i<15000;i++){var t_=Math.random()*Math.PI*2, r_=Math.pow(Math.random(),0.5);var x=cx3+16*Math.pow(Math.sin(t_),3)*hs*r_;var y=cy-(13*Math.cos(t_)-5*Math.cos(2*t_)-2*Math.cos(3*t_)-Math.cos(4*t_))*hs*r_;if(x>5&&x<FW-5&&y>5&&y<FH-5)heartPts.push({x:x,y:y});}
+      for(var i=0;i<20000;i++){var t_=Math.random()*Math.PI*2,r_=Math.pow(Math.random(),0.5);var x=cx3+16*Math.pow(Math.sin(t_),3)*hs*r_;var y=cy-(13*Math.cos(t_)-5*Math.cos(2*t_)-2*Math.cos(3*t_)-Math.cos(4*t_))*hs*r_;if(x>4&&x<FW-4&&y>4&&y<FH-4)heartPts.push({x:x,y:y});}
       for(var i=heartPts.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=heartPts[i];heartPts[i]=heartPts[j];heartPts[j]=t;}
       var chosenH=[], md2H=spacing*spacing;
       for(var i=0;i<heartPts.length&&chosenH.length<needH;i++){var p=heartPts[i];if(p.x<6||p.x>FW-6||p.y<6||p.y>FH-6)continue;var ok=true;for(var j=0;j<chosenH.length;j++){var dx=p.x-chosenH[j].x,dy=p.y-chosenH[j].y;if(dx*dx+dy*dy<md2H){ok=false;break;}}if(ok)chosenH.push(p);}
-      if(chosenH.length<needH){md2H=(spacing*0.55)*(spacing*0.55);for(var i=0;i<heartPts.length&&chosenH.length<needH;i++){var p=heartPts[i];if(p.x<3||p.x>FW-3||p.y<3||p.y>FH-3)continue;var ok=true;for(var j=0;j<chosenH.length;j++){var dx=p.x-chosenH[j].x,dy=p.y-chosenH[j].y;if(dx*dx+dy*dy<md2H){ok=false;break;}}if(ok)chosenH.push(p);}}
+      if(chosenH.length<needH){md2H=(spacing*0.5)*(spacing*0.5);for(var i=0;i<heartPts.length&&chosenH.length<needH;i++){var p=heartPts[i];if(p.x<3||p.x>FW-3||p.y<3||p.y>FH-3)continue;var ok=true;for(var j=0;j<chosenH.length;j++){var dx=p.x-chosenH[j].x,dy=p.y-chosenH[j].y;if(dx*dx+dy*dy<md2H){ok=false;break;}}if(ok)chosenH.push(p);}}
 
-      // ===== 合并: 2 → 0 → 心 =====
+      // 合并
       var chosen = chosen2.concat(chosen0).concat(chosenH);
 
       // ===== 缩放到实际像素 ====
