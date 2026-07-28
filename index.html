@@ -590,6 +590,59 @@
       background: rgba(0,0,0,0.15) !important;
     }
 
+    /* ========== 信件页面装饰 ========== */
+    .letter-decorations {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 1;
+      overflow: hidden;
+    }
+    .letter-deco {
+      position: absolute;
+      font-size: 2rem;
+      opacity: 0;
+      animation-fill-mode: both;
+    }
+    /* 气球 */
+    .deco-balloon-1 { top: 5%; left: 8%; animation: floatUpDown 4s ease-in-out infinite 0.3s; }
+    .deco-balloon-2 { top: 12%; right: 10%; animation: floatUpDown 4.5s ease-in-out infinite 1s; }
+    /* 蛋糕 */
+    .deco-cake { bottom: 10%; left: 6%; animation: floatUpDown 5s ease-in-out infinite 0.8s; font-size: 2.5rem; }
+    /* 花花 */
+    .deco-flower-1 { top: 25%; left: 3%; animation: swayFlower 5s ease-in-out infinite 0.5s; font-size: 1.8rem; }
+    .deco-flower-2 { top: 60%; right: 5%; animation: swayFlower 4.8s ease-in-out infinite 1.5s; font-size: 2rem; }
+    .deco-flower-3 { bottom: 20%; left: 12%; animation: swayFlower 5.5s ease-in-out infinite 2s; font-size: 1.6rem; }
+    /* 云朵 */
+    .deco-cloud-1 { top: 8%; left: 30%; animation: cloudDrift 12s linear infinite; font-size: 2.5rem; }
+    .deco-cloud-2 { top: 18%; right: 20%; animation: cloudDrift 14s linear infinite 3s; font-size: 2rem; }
+    /* 星星闪烁 */
+    .deco-sparkle-1 { top: 15%; left: 50%; animation: twinkle 2.5s ease-in-out infinite; font-size: 1.5rem; }
+    .deco-sparkle-2 { top: 70%; right: 15%; animation: twinkle 3s ease-in-out infinite 1s; font-size: 1.8rem; }
+    .deco-sparkle-3 { bottom: 35%; left: 20%; animation: twinkle 2.8s ease-in-out infinite 0.5s; }
+    .deco-star { top: 40%; left: 55%; animation: twinkle 3.5s ease-in-out infinite 1.8s; font-size: 2.2rem; }
+
+    @keyframes floatUpDown {
+      0%, 100% { transform: translateY(0); opacity: 0.75; }
+      50% { transform: translateY(-18px); opacity: 1; }
+    }
+    @keyframes swayFlower {
+      0%, 100% { transform: rotate(-5deg) translateY(0); opacity: 0.7; }
+      50% { transform: rotate(5deg) translateY(-10px); opacity: 1; }
+    }
+    @keyframes cloudDrift {
+      0% { transform: translateX(-20px); opacity: 0.5; }
+      25% { transform: translateX(10px); opacity: 0.8; }
+      50% { transform: translateX(30px); opacity: 0.5; }
+      75% { transform: translateX(5px); opacity: 0.7; }
+      100% { transform: translateX(-20px); opacity: 0.5; }
+    }
+    @keyframes twinkle {
+      0%, 100% { transform: scale(0.8); opacity: 0.4; }
+      50% { transform: scale(1.2); opacity: 1; }
+    }
+
     /* ========== 响应式 ========== */
     @media (max-width: 480px) {
       .login-card, .letter-card, .quiz-card {
@@ -729,6 +782,20 @@
 
   <!-- ==================== 第6页：信件 ==================== -->
   <div class="page" id="letter-page">
+    <div class="letter-decorations">
+      <span class="letter-deco deco-balloon-1">🎈</span>
+      <span class="letter-deco deco-balloon-2">🎈</span>
+      <span class="letter-deco deco-cake">🎂</span>
+      <span class="letter-deco deco-flower-1">🌸</span>
+      <span class="letter-deco deco-flower-2">🌼</span>
+      <span class="letter-deco deco-flower-3">🌷</span>
+      <span class="letter-deco deco-cloud-1">☁️</span>
+      <span class="letter-deco deco-cloud-2">☁️</span>
+      <span class="letter-deco deco-sparkle-1">✨</span>
+      <span class="letter-deco deco-sparkle-2">✨</span>
+      <span class="letter-deco deco-sparkle-3">💫</span>
+      <span class="letter-deco deco-star">⭐</span>
+    </div>
     <div class="letter-card">
       <div class="letter-icon">💌</div>
       <div class="letter-body" id="letter-content">
