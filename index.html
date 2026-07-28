@@ -576,6 +576,16 @@
       transition: all 0.3s;
       letter-spacing: 1px;
     }
+    .gallery-hint {
+      position: fixed;
+      bottom: 60px;
+      right: 24px;
+      z-index: 100;
+      color: rgba(255,255,255,0.65);
+      font-size: 0.75rem;
+      letter-spacing: 1px;
+      pointer-events: none;
+    }
     .gallery-back-btn:hover {
       background: rgba(255,255,255,0.4);
       transform: translateY(-2px);
@@ -664,6 +674,7 @@
   <canvas id="decoration-canvas"></canvas>
 
   <!-- ==================== 全局返回按钮（始终在 body 层，不受页面切换影响） ==================== -->
+  <p class="gallery-hint" id="gallery-hint" style="display:none;">✨ 点击照片即可放大哦</p>
   <button id="global-back-btn" class="gallery-back-btn" style="display:none;">← 返回</button>
 
   <!-- ==================== 第0页：登录 ==================== -->
@@ -843,17 +854,25 @@
 
       // 全局返回按钮
       const backBtn = document.getElementById('global-back-btn');
+      const hint = document.getElementById('gallery-hint');
       if (backTargets[pageId]) {
         backBtn.style.display = '';
         backBtn.setAttribute('data-target', backTargets[pageId]);
-        // 恭喜页面用深色按钮
         if (pageId === 'result-c-page' || pageId === 'gallery-page') {
           backBtn.classList.add('dark');
         } else {
           backBtn.classList.remove('dark');
         }
+        // 照片墙显示提示
+        if (pageId === 'gallery-page') {
+          hint.style.display = '';
+          hint.style.color = '#555';
+        } else {
+          hint.style.display = 'none';
+        }
       } else {
         backBtn.style.display = 'none';
+        hint.style.display = 'none';
       }
 
       // 特殊页面逻辑
